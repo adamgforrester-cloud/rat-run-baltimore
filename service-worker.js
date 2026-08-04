@@ -1,7 +1,7 @@
 {
-  "name": "Rat Run: Baltimore 1.4.2",
-  "short_name": "Rat Run",
-  "description": "Leaderboard diagnostic release with visible Supabase status and shared score confirmation.",
+  "name": "Rat Run: Baltimore 2.0",
+  "short_name": "Rat Run 2.0",
+  "description": "Stability release with a hardened 30-second clicker and shared global leaderboard.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#090b10",
