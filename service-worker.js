@@ -1,7 +1,7 @@
 {
-  "name": "Rat Run: Baltimore 1.4.1",
+  "name": "Rat Run: Baltimore 1.4.2",
   "short_name": "Rat Run",
-  "description": "Public Risk global competition hotfix with safe startup and shared leaderboard fallback.",
+  "description": "Leaderboard diagnostic release with visible Supabase status and shared score confirmation.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#090b10",

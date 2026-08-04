@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Rat Run: Baltimore 1.4.1 — Public Risk</title>
+<title>Rat Run: Baltimore 1.4.2 — Public Risk</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#15121d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -84,6 +84,16 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
 #rewardBanner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .weekTabs{display:flex;justify-content:center;gap:8px;margin:10px 0}
 .weekTab{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px;font-weight:900}
+
+#leaderStatus{
+ display:inline-block;margin-top:8px;padding:7px 11px;border-radius:999px;
+ font-size:12px;font-weight:1000;background:rgba(255,255,255,.08)
+}
+#leaderStatus.online{color:#9cffb2;border:1px solid #3c9f5d}
+#leaderStatus.offline{color:#ffb4ad;border:1px solid #bd5147}
+#leaderStatus.loading{color:#ffe38b;border:1px solid #a1842e}
+#refreshScores{margin-left:8px;padding:8px 12px;font-size:12px;box-shadow:none;background:#202637;color:#fff;border:1px solid rgba(255,255,255,.22)}
+#submitNotice{margin:9px auto 0;max-width:430px;font-size:13px;font-weight:800}
 </style>
 </head>
 <body>
@@ -112,6 +122,7 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const scoreEl=document.getElementById('score'),timeEl=document.getElementById('time'),missesEl=document.getElementById('misses');
 const message=document.getElementById('message'),comboEl=document.getElementById('combo');
+let leaderboardOnline=false,lastLeaderboardError='';
 const announcement=document.getElementById('announcement'),neighborhoodEl=document.getElementById('neighborhood');
 const cheeseEffect=document.getElementById('cheeseEffect'),coffeeEffect=document.getElementById('coffeeEffect');
 const bestScoreEl=document.getElementById('bestScore'),topScoreEl=document.getElementById('topScore'),targetEl=document.getElementById('target');
@@ -152,18 +163,13 @@ async function supabaseGet(query){
 }
 async function loadLeaderboard(){
  let all=[],weekly=[];
- const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Leaderboard timeout')),3500));
  try{
-  all=normalizedScores(await Promise.race([
-   supabaseGet('select=player_name,score,created_at&order=score.desc&limit=25'),
-   timeout
-  ]));
-  weekly=normalizedScores(await Promise.race([
-   supabaseGet(`select=player_name,score,created_at&created_at=gte.${encodeURIComponent(weekStartISO())}&order=score.desc&limit=25`),
-   new Promise((_,reject)=>setTimeout(()=>reject(new Error('Weekly leaderboard timeout')),3500))
-  ]));
+  all=normalizedScores(await supabaseGet('select=player_name,score,created_at&order=score.desc&limit=25'));
+  weekly=normalizedScores(await supabaseGet(`select=player_name,score,created_at&created_at=gte.${encodeURIComponent(weekStartISO())}&order=score.desc&limit=25`));
+  leaderboardOnline=true;lastLeaderboardError='';
  }catch(e){
   console.warn('Global leaderboard unavailable:',e);
+  leaderboardOnline=false;lastLeaderboardError=String(e.message||e).slice(0,140);
   all=normalizedScores(localScores());weekly=all;
  }
  leaderboard=all;weeklyLeaderboard=weekly;leaderScore=all[0]?.score||0;
@@ -172,7 +178,8 @@ async function loadLeaderboard(){
 }
 async function submitScore(name,value){
  const entry={player_name:cleanName(name),score:Math.max(0,Math.floor(value)),session_id:sessionId};
- let scores=normalizedScores([...localScores(),{name:entry.player_name,score:entry.score,date:new Date().toISOString()}]);storeLocal(scores);
+ let scores=normalizedScores([...localScores(),{name:entry.player_name,score:entry.score,date:new Date().toISOString()}]);
+ storeLocal(scores);
  try{
   const r=await fetch(`${SUPABASE_URL}/rest/v1/rat_run_scores`,{
    method:'POST',
@@ -180,8 +187,12 @@ async function submitScore(name,value){
    body:JSON.stringify(entry)
   });
   if(!r.ok)throw new Error(await r.text());
+  leaderboardOnline=true;lastLeaderboardError='';
   await loadLeaderboard();scores=leaderboard;
- }catch(e){console.warn('Score submission failed:',e)}
+ }catch(e){
+  leaderboardOnline=false;lastLeaderboardError=`Score not uploaded: ${String(e.message||e).slice(0,110)}`;
+  console.warn('Score submission failed:',e);
+ }
  return scores
 }
 function scoreTable(scores,highlight=''){
@@ -232,13 +243,30 @@ function startMusic(){
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null}}
 musicBtn.addEventListener('click',()=>{musicOn=!musicOn;musicBtn.textContent=musicOn?'♫ MUSIC ON':'♫ MUSIC OFF';if(musicOn&&running)startMusic();else stopMusic()});
 soundBtn.addEventListener('click',()=>{soundOn=!soundOn;soundBtn.textContent=soundOn?'🔊 FX ON':'🔇 FX OFF'});
+
+function leaderboardStatusMarkup(){
+ const cls=leaderboardOnline?'online':'offline';
+ const text=leaderboardOnline?'● GLOBAL LEADERBOARD ONLINE':'● OFFLINE — LOCAL SCORES ONLY';
+ return `<div><span id="leaderStatus" class="${cls}">${text}</span><button id="refreshScores">REFRESH SCORES</button></div>
+ <div id="submitNotice">${lastLeaderboardError?`Last error: ${lastLeaderboardError}`:''}</div>`;
+}
+function wireLeaderboardButtons(){
+ const btn=document.getElementById('refreshScores');
+ if(btn)btn.onclick=async()=>{
+  const status=document.getElementById('leaderStatus');
+  if(status){status.className='loading';status.textContent='● CHECKING SUPABASE…'}
+  await loadLeaderboard();
+  showOpening();
+ };
+}
+
 function showOpening(){
  if(!Array.isArray(leaderboard))leaderboard=[];
  if(!Array.isArray(weeklyLeaderboard))weeklyLeaderboard=[];
- message.innerHTML=`${dominoBoard(leaderboard)}<h1>Rat Run:<br>Baltimore</h1><p>Thirty seconds. One shared neighborhood leaderboard. Catch rats, avoid pedestrians, dogs and traffic, survive the tougher Street Ghoul, and watch for the Sewer Gator. Too many civilian hits trigger PUBLIC RISK and dispatch police.</p><input id="playerName" class="nameInput" maxlength="12" value="${playerName}" aria-label="Player name"><br><button id="start">START RUN</button><p><span class="statusChip">SHARED LEADERBOARD • ONLINE WITH LOCAL FALLBACK</span></p><p class="tiny">Version 1.4.1 • Music and sound begin after Start.</p>`;
+ message.innerHTML=`${dominoBoard(leaderboard)}<h1>Rat Run:<br>Baltimore</h1><p>Thirty seconds. One shared neighborhood leaderboard. Catch rats, avoid pedestrians, dogs and traffic, survive the tougher Street Ghoul, and watch for the Sewer Gator. Too many civilian hits trigger PUBLIC RISK and dispatch police.</p><input id="playerName" class="nameInput" maxlength="12" value="${playerName}" aria-label="Player name"><br><button id="start">START RUN</button>${leaderboardStatusMarkup()}<p class="tiny">Version 1.4.2 • Music and sound begin after Start.</p>`;
  message.style.display='block';
  const inp=document.getElementById('playerName');inp.addEventListener('input',()=>playerName=cleanName(inp.value));
- document.getElementById('start').addEventListener('click',()=>{playerName=cleanName(inp.value);start()});
+ document.getElementById('start').addEventListener('click',()=>{playerName=cleanName(inp.value);start()});wireLeaderboardButtons();
 }
 
 

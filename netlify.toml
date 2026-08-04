@@ -1,2 +1,10 @@
-[build]
-publish = "."
+# Rat Run: Baltimore Changelog
+
+## 1.4.2 — Leaderboard Diagnostic
+- Restored correct GitHub project structure.
+- Added visible global leaderboard online/offline status.
+- Added Refresh Scores button.
+- Added readable Supabase error messages.
+- Added clear score-upload confirmation.
+- Preserved local fallback when Supabase is unavailable.
+- No new gameplay mechanics in this release.
