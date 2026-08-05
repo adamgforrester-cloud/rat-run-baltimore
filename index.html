@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Rat Run: Baltimore 1.4.2 — Public Risk</title>
+<title>Rat Run: Baltimore 2.0 — Stability Release</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#15121d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -94,6 +94,10 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
 #leaderStatus.loading{color:#ffe38b;border:1px solid #a1842e}
 #refreshScores{margin-left:8px;padding:8px 12px;font-size:12px;box-shadow:none;background:#202637;color:#fff;border:1px solid rgba(255,255,255,.22)}
 #submitNotice{margin:9px auto 0;max-width:430px;font-size:13px;font-weight:800}
+
+#stabilityBadge{position:absolute;right:14px;bottom:58px;font-size:11px;font-weight:1000;color:#b9ffca}
+#debugPanel{display:none;position:absolute;left:12px;top:155px;max-width:330px;padding:9px 11px;border-radius:10px;background:rgba(0,0,0,.82);font:12px/1.35 monospace;color:#b9ffca;white-space:pre-wrap;z-index:90}
+#debugPanel.show{display:block}
 </style>
 </head>
 <body>
@@ -109,9 +113,9 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
  <div id="effects"><div id="cheeseEffect" class="effect">🧀 RAT FREEZE <span></span></div><div id="coffeeEffect" class="effect">☕ ×2 RUSH <span></span></div></div>
  <div id="neighborhood" class="pill">MOUNT VERNON</div>
  <div id="target" class="pill">TOP SCORE: <span id="topScore">0</span></div>
- <div id="milestone"></div><div id="riskMeter" class="pill">PUBLIC RISK: 0/3</div><div id="rewardBanner"></div>
+ <div id="milestone"></div><div id="riskMeter" class="pill">STABILITY: CORE GAME</div><div id="rewardBanner"></div>
  <div id="combo"></div><div id="announcement"></div><div id="ghoulWarning"></div><div id="finalCountdown"></div><div id="personalBestFlash"></div><div id="comboBarWrap"><div id="comboBar"></div></div>
- <div id="mode" class="pill">Tap rats & bonuses • Hold to place a trap</div>
+ <div id="mode" class="pill">Tap rats & bonuses • Hold to place a trap</div><div id="stabilityBadge" class="pill">2.0 STABILITY MODE</div><div id="debugPanel"></div>
  <div id="audioControls"><button id="musicBtn" class="audioBtn">♫ MUSIC ON</button><button id="soundBtn" class="audioBtn">🔊 FX ON</button></div>
  <button id="installBtn">INSTALL APP</button>
  <div id="message"><h1>Rat Run:<br>Baltimore</h1><p>Loading the shared leaderboard…</p></div>
@@ -121,7 +125,7 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
 (()=>{
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 const scoreEl=document.getElementById('score'),timeEl=document.getElementById('time'),missesEl=document.getElementById('misses');
-const message=document.getElementById('message'),comboEl=document.getElementById('combo');
+const message=document.getElementById('message'),comboEl=document.getElementById('combo'),debugPanel=document.getElementById('debugPanel');
 let leaderboardOnline=false,lastLeaderboardError='';
 const announcement=document.getElementById('announcement'),neighborhoodEl=document.getElementById('neighborhood');
 const cheeseEffect=document.getElementById('cheeseEffect'),coffeeEffect=document.getElementById('coffeeEffect');
@@ -138,6 +142,7 @@ let difficulty=1,combo=0,comboTimer=0,timeLeft=30,adamTimer=8,powerTimer=6;
 let freezeTimer=0,coffeeTimer=0,announcementTimer=0,currentNeighborhood='MOUNT VERNON',vehicleTimer=2,pedTimer=3,pigeonTimer=4;
 let leaderboard=[],leaderScore=0,playerName='ADAM',recordAlerted=false,nearAlerted=false,milestonesHit=new Set(),sessionId='';
 let audioCtx=null,musicOn=true,soundOn=true,musicTimer=null,musicStep=0;
+const STABILITY_MODE=true;let lastSystem='boot',frameErrors=0;const debugEnabled=new URLSearchParams(location.search).has('debug');
 let ghouls=[],ghoulTimer=10,lastCountdownNumber=null,floaters=[],screenShake=0,personalBestAnnounced=false,publicRisk=0,policeUnits=[],policeTimer=999,dogs=[],dogTimer=4,gators=[],gatorTimer=12,gatorAids=[],tripleTimer=0;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const SUPABASE_URL='https://vaavrtkobsfqcessccfh.supabase.co';
@@ -263,7 +268,7 @@ function wireLeaderboardButtons(){
 function showOpening(){
  if(!Array.isArray(leaderboard))leaderboard=[];
  if(!Array.isArray(weeklyLeaderboard))weeklyLeaderboard=[];
- message.innerHTML=`${dominoBoard(leaderboard)}<h1>Rat Run:<br>Baltimore</h1><p>Thirty seconds. One shared neighborhood leaderboard. Catch rats, avoid pedestrians, dogs and traffic, survive the tougher Street Ghoul, and watch for the Sewer Gator. Too many civilian hits trigger PUBLIC RISK and dispatch police.</p><input id="playerName" class="nameInput" maxlength="12" value="${playerName}" aria-label="Player name"><br><button id="start">START RUN</button>${leaderboardStatusMarkup()}<p class="tiny">Version 1.4.2 • Music and sound begin after Start.</p>`;
+ message.innerHTML=`${dominoBoard(leaderboard)}<h1>Rat Run:<br>Baltimore</h1><p>Thirty seconds of fast, stable Rat Run. Catch rats, place traps, grab coffee and cheese, catch Adam, chase combos, and compete on the shared DOMINO SUGARS leaderboard. Experimental enemies are temporarily paused while we harden the core game.</p><input id="playerName" class="nameInput" maxlength="12" value="${playerName}" aria-label="Player name"><br><button id="start">START RUN</button>${leaderboardStatusMarkup()}<p class="tiny">Version 2.0 • Music and sound begin after Start.</p>`;
  message.style.display='block';
  const inp=document.getElementById('playerName');inp.addEventListener('input',()=>playerName=cleanName(inp.value));
  document.getElementById('start').addEventListener('click',()=>{playerName=cleanName(inp.value);start()});wireLeaderboardButtons();
@@ -277,11 +282,23 @@ function roadBounds(y){const sway=Math.sin((worldY+y)*.00125)*W*.025;return{left
 function neighborhoodForTime(t){return t<20?'MOUNT VERNON':t<40?'FELLS POINT':'INNER HARBOR'}
 function announce(text,color='#fff'){announcement.textContent=text;announcement.style.color=color;announcement.style.opacity=1;announcement.style.transform='translate(-50%,-50%) scale(1)';announcementTimer=1.2}
 
+function setSystem(name){
+ lastSystem=name;
+ if(debugEnabled){debugPanel.classList.add('show');debugPanel.textContent=`SYSTEM: ${name}\nSCORE: ${Math.floor(score)}\nRATS: ${rats.length}\nFRAMES RECOVERED: ${frameErrors}`}
+}
+function recoverFrame(error){
+ frameErrors++;
+ console.error('Rat Run recovered frame error in',lastSystem,error);
+ if(debugEnabled){debugPanel.classList.add('show');debugPanel.textContent=`RECOVERED ERROR\nSYSTEM: ${lastSystem}\n${String(error?.message||error)}`}
+ // Clear only transient arrays; never end the round.
+ particles=[];powerups=powerups.filter(Boolean);rats=rats.filter(Boolean);adams=adams.filter(Boolean);traps=traps.filter(Boolean);
+}
+
 function reset(){
- rats=[];traps=[];particles=[];obstacles=[];decorations=[];adams=[];powerups=[];buildings=[];vehicles=[];pedestrians=[];pigeons=[];dogs=[];policeUnits=[];gators=[];gatorAids=[];
+ rats=[];traps=[];particles=[];obstacles=[];decorations=[];adams=[];powerups=[];buildings=[];vehicles=[];pedestrians=[];pigeons=[];dogs=[];policeUnits=[];gators=[];gatorAids=[];ghouls=[];
  score=0;misses=0;elapsed=0;worldY=0;spawnTimer=.55;difficulty=1;combo=0;comboTimer=0;timeLeft=30;adamTimer=rand(7,11);powerTimer=rand(5,8);
  freezeTimer=0;coffeeTimer=0;announcementTimer=0;currentNeighborhood='MOUNT VERNON';vehicleTimer=2;pedTimer=3;pigeonTimer=4;
- recordAlerted=false;nearAlerted=false;milestonesHit=new Set();publicRisk=0;policeTimer=999;dogTimer=3;gatorTimer=8+Math.random()*8;tripleTimer=0;riskMeter.textContent='PUBLIC RISK: 0/3';riskMeter.classList.remove('danger');ghouls=[];ghoulTimer=2.5+Math.random()*2;lastCountdownNumber=null;floaters=[];screenShake=0;personalBestAnnounced=false;comboBar.style.width='0%';personalBestFlash.classList.remove('show');ghoulWarning.classList.remove('active');finalCountdown.classList.remove('show','danger');finalCountdown.textContent='';sessionId=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());policeAlert.classList.remove('active');milestoneEl.textContent='';
+ recordAlerted=false;nearAlerted=false;milestonesHit=new Set();publicRisk=0;policeTimer=999;dogTimer=3;gatorTimer=8+Math.random()*8;tripleTimer=0;riskMeter.textContent='STABILITY: CORE GAME';riskMeter.classList.remove('danger');ghouls=[];ghoulTimer=2.5+Math.random()*2;lastCountdownNumber=null;floaters=[];screenShake=0;personalBestAnnounced=false;comboBar.style.width='0%';personalBestFlash.classList.remove('show');ghoulWarning.classList.remove('active');finalCountdown.classList.remove('show','danger');finalCountdown.textContent='';sessionId=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());policeAlert.classList.remove('active');milestoneEl.textContent='';
  scoreEl.textContent='0';missesEl.textContent='0';timeEl.textContent='30';neighborhoodEl.textContent=currentNeighborhood;
  cheeseEffect.style.display='none';coffeeEffect.style.display='none';
  for(let i=0;i<18;i++)addDecoration(-i*100);
@@ -377,7 +394,7 @@ function hitSpecialActors(x,y){
  for(let i=policeUnits.length-1;i>=0;i--){
   const p=policeUnits[i];if(Math.hypot(x-p.x,y-p.y)<58){
    p.hp--;score+=8;addFloater(p.x,p.y-45,'+8 POLICE HIT','#8fd0ff',19);
-   if(p.hp<=0){score+=175;addFloater(p.x,p.y-65,'+175 CLEARED','#8fd0ff',25);policeUnits.splice(i,1);publicRisk=0;riskMeter.textContent='PUBLIC RISK: 0/3';riskMeter.classList.remove('danger')}
+   if(p.hp<=0){score+=175;addFloater(p.x,p.y-65,'+175 CLEARED','#8fd0ff',25);policeUnits.splice(i,1);publicRisk=0;riskMeter.textContent='STABILITY: CORE GAME';riskMeter.classList.remove('danger')}
    updateHUD();return true
   }
  }
@@ -433,29 +450,34 @@ function activatePowerup(p){
  updateHUD();
 }
 function hitTest(x,y){
- if(hitSpecialActors(x,y))return;
- if(hitGhoul(x,y))return;
- for(const p of pigeons){
-  if(!p.flying&&Math.hypot(x-p.x,y-p.y)<28){p.flying=true;p.vx=rand(-190,190);p.vy=rand(-290,-190);score+=5;sfx('pigeon');burst(p.x,p.y,'#cbd2d8',8);updateHUD();return}
+ setSystem('tap');
+ for(let i=powerups.length-1;i>=0;i--){
+  const p=powerups[i];
+  if(p&&Math.hypot(x-p.x,y-p.y)<p.r+18){powerups.splice(i,1);activatePowerup(p);return}
  }
- for(let i=powerups.length-1;i>=0;i--){const p=powerups[i];if(Math.hypot(x-p.x,y-p.y)<p.r+18){powerups.splice(i,1);activatePowerup(p);return}}
- for(let i=adams.length-1;i>=0;i--){const a=adams[i];if(Math.abs(x-a.x)<a.w*.52&&Math.abs(y-a.y)<a.h*.52){adams.splice(i,1);score+=500*(tripleTimer>0?3:(coffeeTimer>0?2:1));combo+=5;comboTimer=1.8;addFloater(a.x,a.y-40,coffeeTimer>0?'+1000 ADAM!':'+500 ADAM!','#e8a8ff',30);screenShake=16;sfx('adam');burst(a.x,a.y,'#b72cff',42);updateHUD();return}}
- for(let i=rats.length-1;i>=0;i--){const r=rats[i];if(Math.hypot(x-r.x,y-r.y)<r.r+12){rats.splice(i,1);
- const earned=(10+combo*2)*(tripleTimer>0?3:(coffeeTimer>0?2:1));
- score+=earned;combo++;comboTimer=1.2;
- addFloater(r.x,r.y-16,`+${earned}`,combo>=8?'#ffe36e':'#ffffff',combo>=8?27:20);
- if(combo===5)announce('5× COMBO!','#ffe36e');
- if(combo===10){announce('RAT MANIA!','#ff8a45');screenShake=10;sfx('milestone')}
- if(combo>0&&combo%15===0){announce(`${combo}× MONSTER COMBO!`,'#ff5d62');screenShake=15;sfx('record')}
- sfx('rat');burst(r.x,r.y,'#e9dfc5',combo>=10?22:14);updateHUD();return}}
- for(let i=pedestrians.length-1;i>=0;i--){
-  const p=pedestrians[i];
-  if(Math.hypot(x-p.x,y-p.y)<34){civilianStrike('pedestrian',p.x,p.y);pedestrians.splice(i,1);return}
+ for(let i=adams.length-1;i>=0;i--){
+  const a=adams[i];
+  if(a&&Math.abs(x-a.x)<a.w*.52&&Math.abs(y-a.y)<a.h*.52){
+   adams.splice(i,1);const earned=500*(coffeeTimer>0?2:1);score+=earned;combo+=5;comboTimer=1.8;
+   addFloater(a.x,a.y-40,`+${earned} ADAM!`,'#e8a8ff',30);screenShake=12;sfx('adam');burst(a.x,a.y,'#b72cff',34);updateHUD();return
+  }
  }
- for(const v of vehicles){if(Math.abs(x-v.x)<v.w*.55&&Math.abs(y-v.y)<v.h*.5){civilianStrike('car',x,y);return}}
- for(const o of obstacles){if(Math.hypot(x-o.x,y-o.y)<o.r+10){score=Math.max(0,score-15);combo=0;burst(x,y,'#e45858',14);updateHUD();return}}
- combo=0;
+ for(let i=rats.length-1;i>=0;i--){
+  const r=rats[i];
+  if(r&&Math.hypot(x-r.x,y-r.y)<r.r+13){
+   rats.splice(i,1);const earned=(10+combo*2)*(coffeeTimer>0?2:1);score+=earned;combo++;comboTimer=1.2;
+   addFloater(r.x,r.y-16,`+${earned}`,combo>=8?'#ffe36e':'#fff',combo>=8?27:20);
+   if(combo===5)announce('5× COMBO!','#ffe36e');
+   if(combo===10){announce('RAT MANIA!','#ff8a45');screenShake=8;sfx('milestone')}
+   sfx('rat');burst(r.x,r.y,'#e9dfc5',combo>=10?20:12);updateHUD();return
+  }
+ }
+ for(const o of obstacles){
+  if(o&&Math.hypot(x-o.x,y-o.y)<o.r+10){score=Math.max(0,score-10);combo=0;addFloater(x,y,'-10','#ff766d',18);burst(x,y,'#e45858',10);updateHUD();return}
+ }
+ combo=0;comboEl.style.opacity=0;updateComboPolish();
 }
+
 function checkScoreEvents(){
  const whole=Math.floor(score),remaining=Math.max(0,leaderScore-whole);
  targetEl.innerHTML=leaderScore?`TO #1: <span>${remaining.toLocaleString()}</span>`:'SET THE FIRST RECORD';
@@ -674,10 +696,10 @@ canvas.addEventListener('pointermove',e=>{if(pointer.down&&Math.hypot(e.clientX-
 canvas.addEventListener('pointerup',e=>{if(!running)return;const held=performance.now()-pointer.downAt;pointer.down=false;if(held>360&&!pointer.moved)placeTrap(e.clientX,e.clientY);else hitTest(e.clientX,e.clientY)});
 
 function update(dt){
- updateFloaters(dt);
- elapsed+=dt;timeLeft=Math.max(0,30-elapsed);timeEl.textContent=Math.ceil(timeLeft);updateFinalCountdown();if(timeLeft<=0){endGame();return}
- const newN=neighborhoodForTime(elapsed);if(newN!==currentNeighborhood){currentNeighborhood=newN;neighborhoodEl.textContent=newN;announce(newN,'#7ddcff')}
- difficulty=1+elapsed/22;worldY+=dt*(150+difficulty*8);
+ setSystem('clock');updateFloaters(dt);
+ elapsed+=dt;timeLeft=Math.max(0,30-elapsed);timeEl.textContent=Math.ceil(timeLeft);updateFinalCountdown();
+ if(timeLeft<=0){endGame();return}
+ difficulty=1+elapsed/24;worldY+=dt*(145+difficulty*7);
  if(freezeTimer>0)freezeTimer=Math.max(0,freezeTimer-dt);
  if(coffeeTimer>0)coffeeTimer=Math.max(0,coffeeTimer-dt);
  cheeseEffect.style.display=freezeTimer>0?'block':'none';coffeeEffect.style.display=coffeeTimer>0?'block':'none';
@@ -685,90 +707,44 @@ function update(dt){
  coffeeEffect.querySelector('span').textContent=coffeeTimer>0?coffeeTimer.toFixed(1)+'s':'';
  if(announcementTimer>0){announcementTimer-=dt;if(announcementTimer<=0){announcement.style.opacity=0;announcement.style.transform='translate(-50%,-50%) scale(.8)'}}
 
- adamTimer-=dt;if(adamTimer<=0){spawnAdam();adamTimer=coffeeTimer>0?rand(3.5,5.5):rand(10,16)}
- powerTimer-=dt;if(powerTimer<=0){spawnPowerup();powerTimer=rand(10,15)}
- vehicleTimer-=dt;if(vehicleTimer<=0){spawnVehicle();vehicleTimer=rand(2.7,5.2)}
- dogTimer-=dt;if(dogTimer<=0){spawnDog();dogTimer=rand(3.5,6)}
- gatorTimer-=dt;if(gatorTimer<=0&&gators.length===0&&gatorAids.length===0){spawnGator();gatorTimer=18+Math.random()*12}
- pedTimer-=dt;if(pedTimer<=0){spawnPedestrian();pedTimer=rand(2.2,4.8)}
- pigeonTimer-=dt;if(pigeonTimer<=0){spawnPigeons();pigeonTimer=rand(4.5,8)}
- spawnTimer-=dt;if(spawnTimer<=0){const n=Math.random()<Math.min(.56,difficulty*.06)?Math.floor(rand(2,5)):1;for(let i=0;i<n;i++)spawnRat();spawnTimer=rand(.23,.72)/Math.min(2.05,difficulty*.12+.85)}
+ setSystem('spawning');
+ adamTimer-=dt;if(adamTimer<=0){spawnAdam();adamTimer=rand(9,14)}
+ powerTimer-=dt;if(powerTimer<=0){spawnPowerup();powerTimer=rand(7,11)}
+ spawnTimer-=dt;if(spawnTimer<=0){const n=Math.random()<.18?2:1;for(let i=0;i<n;i++)spawnRat();spawnTimer=rand(.28,.62)/Math.min(1.6,.9+difficulty*.08)}
+ if(buildings.length<15)addBuilding(-180);if(decorations.length<18)addDecoration(-100);if(obstacles.length<6)addObstacle(-220);
 
- if(buildings.length<15)addBuilding(-180);if(decorations.length<20)addDecoration(-100);if(obstacles.length<8)addObstacle(-220);
- const scroll=dt*(150+difficulty*8);
+ setSystem('scenery');
+ const scroll=dt*(145+difficulty*7);
  for(const b of buildings)b.y+=scroll;for(const d of decorations)d.y+=scroll;for(const o of obstacles)o.y+=scroll;
- buildings=buildings.filter(b=>b.y<H+260);decorations=decorations.filter(d=>d.y<H+130);obstacles=obstacles.filter(o=>o.y<H+110);
+ buildings=buildings.filter(b=>b&&b.y<H+260);decorations=decorations.filter(d=>d&&d.y<H+130);obstacles=obstacles.filter(o=>o&&o.y<H+110);
 
+ setSystem('rats');
  const ratScale=freezeTimer>0?.04:1;
  for(const r of rats){
-  r.age+=dt;r.wobble+=dt*rand(5.5,8.5);r.y+=Math.sin(r.wobble*1.7)*7*dt;const b=roadBounds(r.y),desiredX=r.targetX,desiredY=r.y+80+Math.sin(r.wobble)*r.curve;
+  if(!r)continue;
+  r.age+=dt;r.wobble+=dt*7;r.y+=Math.sin(r.wobble*1.7)*6*dt;
+  const desiredX=r.targetX,desiredY=r.y+80+Math.sin(r.wobble)*r.curve;
   let dx=desiredX-r.x,dy=desiredY-r.y,len=Math.hypot(dx,dy)||1;
   const desiredVx=dx/len*r.speed,desiredVy=dy/len*r.speed*.48+35;
   r.vx+=(desiredVx-r.vx)*clamp(r.turnRate*dt,0,1);r.vy+=(desiredVy-r.vy)*clamp(r.turnRate*dt,0,1);
   r.x+=r.vx*dt*ratScale;r.y+=r.vy*dt*ratScale+(freezeTimer>0?scroll:0);
-  for(const o of obstacles){const dist=Math.hypot(r.x-o.x,r.y-o.y);if(dist<o.r+r.r+30){const push=(o.r+r.r+30-dist)/Math.max(1,dist);r.vx+=(r.x-o.x)*push*9;r.vy+=(r.y-o.y)*push*5}}
-  for(const t of traps){if(t.armed<=0&&Math.hypot(r.x-t.x,r.y-t.y)<t.r+r.r){r.alive=false;score+=35*(tripleTimer>0?3:(coffeeTimer>0?2:1));combo++;comboTimer=1.2;burst(t.x,t.y,'#f2c14e',18);t.life=0;updateHUD()}}
+  for(const t of traps){if(t&&t.armed<=0&&Math.hypot(r.x-t.x,r.y-t.y)<t.r+r.r){r.alive=false;score+=35*(coffeeTimer>0?2:1);combo++;comboTimer=1.2;burst(t.x,t.y,'#f2c14e',14);t.life=0;updateHUD()}}
   const nowB=roadBounds(r.y),reached=r.fromLeft?r.x>nowB.right+r.r:r.x<nowB.left-r.r;
   if(reached||r.y>H+50){r.alive=false;misses++;combo=0;updateHUD()}
  }
- rats=rats.filter(r=>r.alive);
+ rats=rats.filter(r=>r&&r.alive);
 
- for(const a of adams){a.age+=dt;a.bob+=dt*9;a.x+=a.vx*dt;a.y+=a.vy*dt+Math.sin(a.bob)*18*dt;const b=roadBounds(a.y);if((a.fromLeft&&a.x>b.right+100)||(!a.fromLeft&&a.x<b.left-100)||a.y>H+100)a.alive=false}
- adams=adams.filter(a=>a.alive);
- for(const p of powerups){p.age+=dt;p.life-=dt;p.y+=scroll;if(p.life<=0||p.y>H+80)p.alive=false}
- powerups=powerups.filter(p=>p.alive!==false);
- for(const t of traps){t.life-=dt;t.armed-=dt;t.y+=scroll}traps=traps.filter(t=>t.life>0&&t.y<H+70);
+ setSystem('bonuses');
+ for(const a of adams){if(!a)continue;a.age+=dt;a.bob+=dt*9;a.x+=a.vx*dt;a.y+=a.vy*dt+Math.sin(a.bob)*18*dt;const b=roadBounds(a.y);if((a.fromLeft&&a.x>b.right+100)||(!a.fromLeft&&a.x<b.left-100)||a.y>H+100)a.alive=false}
+ adams=adams.filter(a=>a&&a.alive);
+ for(const p of powerups){if(!p)continue;p.age+=dt;p.life-=dt;p.y+=scroll;if(p.life<=0||p.y>H+80)p.alive=false}
+ powerups=powerups.filter(p=>p&&p.alive!==false);
+ for(const t of traps){if(!t)continue;t.life-=dt;t.armed-=dt;t.y+=scroll}traps=traps.filter(t=>t&&t.life>0&&t.y<H+70);
 
- for(const v of vehicles){
-  v.y+=v.vy*dt;v.horn-=dt;
-  if(v.y>H+180)v.alive=false;
-  for(const r of rats){
-   if(Math.abs(r.x-v.x)<v.w*.48+r.r&&Math.abs(r.y-v.y)<v.h*.45+r.r){
-    r.alive=false;score+=20*(coffeeTimer>0?2:1);burst(r.x,r.y,'#d6c8af',12);updateHUD();
-   }
-  }
- }
- vehicles=vehicles.filter(v=>v.alive);
- for(const p of pedestrians){
-  p.phase+=dt*7;p.y+=p.vy*dt;
-  if(p.y>H+80)p.alive=false;
-  for(const r of rats){
-   if(Math.hypot(p.x-r.x,p.y-r.y)<42){p.x+=p.side*55*dt;p.phase+=dt*8}
-  }
- }
- pedestrians=pedestrians.filter(p=>p.alive);
- for(const p of pigeons){
-  p.phase+=dt*9;
-  if(p.flying){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=95*dt}
-  else{p.y+=scroll}
-  for(const r of rats){
-   if(!p.flying&&Math.hypot(p.x-r.x,p.y-r.y)<55){p.flying=true;p.vx=rand(-170,170);p.vy=rand(-260,-170)}
-  }
-  if(p.y>H+80||p.x<-100||p.x>W+100)p.alive=false;
- }
- pigeons=pigeons.filter(p=>p.alive);
-
- updateGhouls(dt);
-
- if(tripleTimer>0)tripleTimer=Math.max(0,tripleTimer-dt);
- for(const d of dogs){
-  d.phase+=dt*8;d.x+=d.vx*dt;d.y+=Math.sin(d.phase)*8*dt;
-  if(d.x<-80||d.x>W+80)d.alive=false;
- }
- dogs=dogs.filter(d=>d.alive);
- for(const p of policeUnits){
-  p.x+=p.vx*dt;p.x=clamp(p.x,55,W-55);p.drain-=dt;
-  if(p.drain<=0){score=Math.max(0,score-12);addFloater(p.x,p.y-50,'-12 POLICE','#8fd0ff',18);p.drain=1.2;updateHUD()}
- }
- for(const g of gators){
-  g.age+=dt;g.bite-=dt;
-  if(g.bite<=0&&rats.length){const r=rats[Math.floor(Math.random()*rats.length)];const idx=rats.indexOf(r);if(idx>=0)rats.splice(idx,1);score=Math.max(0,score-10);addFloater(g.x,g.y-55,'GATOR ATE RAT -10','#b9ff93',18);g.bite=1.5;updateHUD()}
- }
- for(const a of gatorAids){a.age+=dt;a.life-=dt;if(a.life<=0)a.dead=true}
- gatorAids=gatorAids.filter(a=>!a.dead);
-
- for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);
- if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){combo=0;comboEl.style.opacity=0}}
+ setSystem('particles');
+ for(const p of particles){if(!p)continue;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*dt;p.life-=dt}
+ particles=particles.filter(p=>p&&p.life>0);
+ if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){combo=0;comboEl.style.opacity=0;updateComboPolish()}}
 }
 
 async function endGame(){
@@ -780,7 +756,7 @@ async function endGame(){
  const rank=scores.findIndex(s=>s.name===playerName&&s.score===finalScore)+1;
  const title=finalScore>oldLeader?'NEW BALTIMORE CHAMPION!':rank>0&&rank<=10?`YOU PLACED #${rank}`:'RUN COMPLETE';
  if(finalScore>oldLeader)sfx('record');
- message.innerHTML=`${dominoBoard(scores,title,playerName)}<h1>${finalScore.toLocaleString()}</h1><p>${rank>0?`${playerName} is ranked <strong>#${rank}</strong>.`:`Great run, ${playerName}.`} GLOBAL LEADERBOARD CONNECTED</p><button id="again">PLAY AGAIN</button><button id="home" class="audioBtn">LEADERBOARD HOME</button><p class="tiny">GLOBAL LEADERBOARD CONNECTED</p>`;
+ message.innerHTML=`${dominoBoard(scores,title,playerName)}<h1>${finalScore.toLocaleString()}</h1><p>${rank>0?`${playerName} is ranked <strong>#${rank}</strong>.`:`Great run, ${playerName}.`} ${leaderboardOnline?'Score confirmed on the global leaderboard.':'Score saved locally; global upload can be retried.'}</p><button id="again">PLAY AGAIN</button><button id="home" class="audioBtn">LEADERBOARD HOME</button><p class="tiny">${leaderboardOnline?'GLOBAL SCORE CONFIRMED':'LOCAL FALLBACK'}</p>`;
  document.getElementById('again').addEventListener('click',start);
  document.getElementById('home').addEventListener('click',showOpening);
 }
@@ -1001,26 +977,23 @@ function drawPigeon(p){
 }
 
 function draw(){
- ctx.save();
+ setSystem('drawing');ctx.save();
  if(screenShake>0)ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));
- drawStreet();decorations.sort((a,b)=>a.y-b.y).forEach(drawDecor);pedestrians.forEach(drawPedestrian);dogs.forEach(drawDog);pigeons.forEach(drawPigeon);obstacles.forEach(drawObstacle);traps.forEach(drawTrap);rats.forEach(drawRat);drawGhouls();drawGators();drawPolice();drawGatorAids();vehicles.forEach(drawVehicle);powerups.forEach(drawPowerup);adams.forEach(drawAdam);
+ drawStreet();
+ decorations.filter(Boolean).sort((a,b)=>a.y-b.y).forEach(drawDecor);
+ obstacles.filter(Boolean).forEach(drawObstacle);traps.filter(Boolean).forEach(drawTrap);
+ rats.filter(Boolean).forEach(drawRat);powerups.filter(Boolean).forEach(drawPowerup);adams.filter(Boolean).forEach(drawAdam);
  for(const p of particles){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size)}ctx.globalAlpha=1;
- const vignette=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);vignette.addColorStop(0,'rgba(0,0,0,0)');vignette.addColorStop(1,'rgba(8,4,16,.32)');ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);
-
+ const vignette=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);vignette.addColorStop(0,'rgba(0,0,0,0)');vignette.addColorStop(1,'rgba(8,4,16,.28)');ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);
  ctx.restore();drawFloaters();
 }
+
 function loop(now){
  if(!running)return;
- const dt=Math.min(.033,(now-last)/1000);last=now;
- try{update(dt);draw();}
- catch(error){
-  console.error('Rat Run frame error:',error);
-  ghouls=[];ghoulTimer=12;
-  ghoulWarning.textContent='GAME RECOVERED — CONTINUE PLAYING';
-  ghoulWarning.classList.add('active');
-  setTimeout(()=>ghoulWarning.classList.remove('active'),1400);
- }
- requestAnimationFrame(loop)
+ const dt=Math.min(.033,Math.max(.001,(now-last)/1000));last=now;
+ try{update(dt);if(running)draw()}
+ catch(error){recoverFrame(error)}
+ if(running)requestAnimationFrame(loop)
 }
 
 const installBtn=document.getElementById('installBtn');let deferredInstallPrompt=null;

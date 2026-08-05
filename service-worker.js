@@ -1,22 +1,5 @@
-{
-  "name": "Rat Run: Baltimore 2.0",
-  "short_name": "Rat Run 2.0",
-  "description": "Stability release with a hardened 30-second clicker and shared global leaderboard.",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#090b10",
-  "theme_color": "#15121d",
-  "orientation": "any",
-  "icons": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
+const CACHE='rat-run-baltimore-v200';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./leaderboard-config.js','./CHANGELOG.md','./icons/icon-192.png','./icons/icon-512.png','./assets/adam-runner.png','./assets/giant-cheese.svg','./assets/coffee.svg'];
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+self.addEventListener('activate',e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
+self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match('./index.html'))))});

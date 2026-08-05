@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="170" height="170" viewBox="0 0 170 170">
+<ellipse cx="82" cy="145" rx="62" ry="11" fill="#000" opacity=".25"/>
+<path d="M38 57h86l-8 72c-2 14-12 20-31 20H68c-18 0-27-7-29-21z" fill="#efe4d2" stroke="#432919" stroke-width="7"/>
+<path d="M124 72h13c19 0 24 16 18 31-5 12-18 17-35 14" fill="none" stroke="#efe4d2" stroke-width="16"/>
+<path d="M124 72h13c19 0 24 16 18 31-5 12-18 17-35 14" fill="none" stroke="#432919" stroke-width="7"/>
+<ellipse cx="81" cy="58" rx="42" ry="12" fill="#4a2716" stroke="#432919" stroke-width="6"/>
+<path d="M62 41c-13-15 13-20 1-36M86 40c-12-17 15-21 3-38M108 43c-11-14 13-20 3-34" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".75"/>
+<path d="M50 109h62" stroke="#b72cff" stroke-width="12"/>
+<text x="81" y="116" text-anchor="middle" font-family="Arial" font-weight="900" font-size="20" fill="white">BALT</text>
+</svg>
