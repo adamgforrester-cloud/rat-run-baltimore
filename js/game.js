@@ -127,12 +127,14 @@ export class RatRunGame {
     const fromLeft = Math.random() < .5;
     const horizon = this.height*.31;
     const roadBottom = this.height*.98;
-    const y = horizon + (roadBottom-horizon)*(.35+Math.random()*.58);
+    const y = horizon + (roadBottom-horizon)*(.42+Math.random()*.50);
     const depth = (y-horizon)/(roadBottom-horizon);
     const radius = 10 + depth*14;
+    const road = this.roadEdges(y);
+    const edgePadding = radius*1.4;
     const speed = 105 + depth*125 + Math.random()*55;
     this.rats.push({
-      x: fromLeft ? -radius*3 : this.width+radius*3,
+      x: fromLeft ? road.left-edgePadding : road.right+edgePadding,
       y,
       baseY:y,
       vx:(fromLeft?1:-1)*speed,
@@ -195,6 +197,10 @@ export class RatRunGame {
     const footWobble = Math.sin(r.gait)*2.7*r.depth;
     const targetY = r.state==="weave" || r.state==="panic" ? r.laneGoal : r.baseY;
     r.y += (targetY + footWobble - r.y)*Math.min(1,dt*(r.state==="panic"?13:8));
+    const bounds=this.roadEdges(r.y);
+    const pad=r.radius*.55;
+    if(r.x<bounds.left-pad && r.dir<0) r.x=bounds.left-pad;
+    if(r.x>bounds.right+pad && r.dir>0) r.x=bounds.right+pad;
   }
 
   pointer(event) {
@@ -238,7 +244,7 @@ export class RatRunGame {
   roadEdges(y) {
     const horizonY=this.height*.29, bottomY=this.height*1.04;
     const t=Math.max(0,Math.min(1,(y-horizonY)/(bottomY-horizonY)));
-    const half=this.width*(.145 + t*.405);
+    const half=this.width*(.125 + t*.43);
     return {left:this.width*.5-half,right:this.width*.5+half,t};
   }
 
@@ -280,11 +286,21 @@ export class RatRunGame {
     c.fillRect(w*.63,h*.205,w*.045,h*.045);
     c.fillRect(w*.635,h*.195,w*.035,h*.012);
     c.fillRect(w*.639,h*.25,3,h*.035);c.fillRect(w*.667,h*.25,3,h*.035);
-    // rooftop sign
-    c.strokeStyle="#31485c";c.lineWidth=3;
-    c.strokeRect(w*.29,h*.185,w*.09,h*.04);
-    c.fillStyle="#f7d070";c.font=`900 ${Math.max(10,w*.012)}px system-ui`;c.textAlign="center";
-    c.fillText("CHARM CITY",w*.335,h*.213);
+    // rooftop sign — positioned above the rowhouses so it remains readable.
+    const signX=w*.34-skylineDrift*.12,signY=h*.145,signW=w*.13,signH=h*.052;
+    c.fillStyle="rgba(20,32,44,.82)";c.fillRect(signX-signW/2,signY-signH/2,signW,signH);
+    c.strokeStyle="#f3c95e";c.lineWidth=3;c.strokeRect(signX-signW/2,signY-signH/2,signW,signH);
+    c.fillStyle="#ffe47e";c.font=`1000 ${Math.max(12,w*.016)}px system-ui`;c.textAlign="center";
+    c.shadowColor="rgba(255,221,104,.55)";c.shadowBlur=12;
+    c.fillText("CHARM CITY",signX,signY+5);c.shadowBlur=0;
+
+    // Industrial waterfront-style neon anchor.
+    const sugarX=w*.69, sugarY=h*.165;
+    c.strokeStyle="#c7d9e6";c.lineWidth=2;
+    c.beginPath();c.moveTo(sugarX,sugarY+22);c.lineTo(sugarX,sugarY-18);c.stroke();
+    c.fillStyle="#ef5850";c.font=`1000 ${Math.max(10,w*.013)}px system-ui`;c.textAlign="center";
+    c.shadowColor="rgba(239,88,80,.65)";c.shadowBlur=12;
+    c.fillText("SUGARS",sugarX,sugarY);c.shadowBlur=0;
 
     // BACKGROUND ROWHOUSES — slow parallax, visually anchored.
     const houseTop=h*.18,houseBottom=h*.42;
@@ -351,6 +367,12 @@ export class RatRunGame {
     const road=c.createLinearGradient(0,h*.29,0,h);
     road.addColorStop(0,"#4a5057");road.addColorStop(1,"#25292e");
     c.fillStyle=road;c.beginPath();c.moveTo(horizon.left,h*.29);c.lineTo(horizon.right,h*.29);c.lineTo(bottom.right,h);c.lineTo(bottom.left,h);c.closePath();c.fill();
+    const roadHaze=c.createLinearGradient(0,h*.28,0,h*.48);
+    roadHaze.addColorStop(0,"rgba(205,215,222,.35)");
+    roadHaze.addColorStop(1,"rgba(205,215,222,0)");
+    c.fillStyle=roadHaze;
+    c.beginPath();c.moveTo(horizon.left,h*.29);c.lineTo(horizon.right,h*.29);
+    c.lineTo(this.roadEdges(h*.48).right,h*.48);c.lineTo(this.roadEdges(h*.48).left,h*.48);c.closePath();c.fill();
 
     // Road texture — deterministic and scrolling toward the viewer.
     c.fillStyle="rgba(255,255,255,.035)";
@@ -388,7 +410,7 @@ export class RatRunGame {
     // Storm drains stay beside the curb.
     for(let i=0;i<5;i++){
       const phase=((i/5 + this.worldScroll*.00046)%1);
-      const y=h*(.39+phase*.57);
+      const y=h*(.45+phase*.50);
       const edge=this.roadEdges(y),t=edge.t,side=i%2?-1:1;
       const x=side<0?edge.left+8+18*t:edge.right-8-18*t;
       c.save();c.translate(x,y);c.scale(.35+t*.9,.35+t*.9);
@@ -433,7 +455,7 @@ export class RatRunGame {
     // Small lived-in sidewalk details.
     for(let i=0;i<9;i++){
       const phase=((i/9 + this.worldScroll*.00043)%1);
-      const y=h*(.36+phase*.61);
+      const y=h*(.43+phase*.54);
       const edge=this.roadEdges(y),t=edge.t,side=i%2?-1:1;
       const x=side<0?edge.left-(42+38*t):edge.right+(42+38*t);
       c.save();c.translate(x,y);c.scale(.32+t*.82,.32+t*.82);
@@ -490,7 +512,8 @@ export class RatRunGame {
     c.stroke();
 
     // Body/head.
-    c.fillStyle=gold?"#e7b92d":"#655e5b";
+    if(gold){c.shadowColor="#ffe66d";c.shadowBlur=22}
+    c.fillStyle=gold?"#f0c62f":"#655e5b";
     c.beginPath();c.ellipse(0,0,r.radius*1.02,r.radius*.66,-.04,0,Math.PI*2);c.fill();
     c.beginPath();c.ellipse(r.radius*.72,-r.radius*.15 + Math.sin(r.look)*r.radius*.035,r.radius*.55,r.radius*.47,0,0,Math.PI*2);c.fill();
 
@@ -507,6 +530,7 @@ export class RatRunGame {
     if(gold){
       c.fillStyle="#fff3a6";c.font=`900 ${Math.max(10,r.radius*.7)}px system-ui`;c.fillText("★",-3,-r.radius*.75);
     }
+    c.shadowBlur=0;
     c.restore();
   }
 }

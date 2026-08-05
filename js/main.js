@@ -72,6 +72,7 @@ function showHeadline() {
   headlineEl.classList.remove("show");
   void headlineEl.offsetWidth;
   headlineEl.classList.add("show");
+  window.setTimeout(() => headlineEl.classList.remove("show"), 1450);
 }
 
 function announce(text) {
@@ -116,7 +117,11 @@ startButton.addEventListener("click", () => {
   resultEl.textContent="";
   overlay.classList.remove("show");
   showHeadline();
-  setTimeout(() => game.start(), 620);
+  startButton.disabled=true;
+  window.setTimeout(() => {
+    game.start();
+    startButton.disabled=false;
+  }, 1450);
 });
 
 refreshButton.addEventListener("click", refreshLeaderboard);

@@ -134,7 +134,7 @@ li span { float: right; color: #f3d474; }
 #headline {
   position: fixed;
   left: 50%;
-  top: 26%;
+  top: 31%;
   transform: translate(-50%,-50%) scale(.86);
   z-index: 23;
   width: min(86vw, 760px);
@@ -156,4 +156,16 @@ li span { float: right; color: #f3d474; }
   0% { opacity: 0; transform: translate(-50%,-36%) scale(.78); }
   16%,72% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
   100% { opacity: 0; transform: translate(-50%,-67%) scale(.95); }
+}
+
+#headline {
+  box-shadow: 0 16px 50px rgba(0,0,0,.42), 0 0 28px rgba(255,207,107,.15);
+}
+#headline::before {
+  content: "BREAKING NEWS";
+  display: block;
+  margin-bottom: 5px;
+  color: #ff6257;
+  font-size: 11px;
+  letter-spacing: .2em;
 }

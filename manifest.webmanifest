@@ -1,6 +1,6 @@
 {
-  "name": "Rat Run: Baltimore \u2014 The Living City 1.2",
-  "short_name": "Rat Run 1.2",
+  "name": "Rat Run: Baltimore \u2014 Baltimore Identity 1.3",
+  "short_name": "Rat Run 1.3",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#07101e",
@@ -17,5 +17,5 @@
       "type": "image/png"
     }
   ],
-  "description": "A denser living Baltimore street with perspective, animated rats and a shared global leaderboard."
+  "description": "Baltimore identity update with visible headlines, roadway rat lanes and global competition."
 }

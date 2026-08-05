@@ -54,3 +54,13 @@ VERSION 1.2 — THE LIVING CITY
 - Strengthened click particles and screen shake.
 - Added a random humorous news headline at the start of every round.
 - Kept the modular architecture and global leaderboard unchanged.
+
+
+VERSION 1.3 — BALTIMORE IDENTITY
+- Headlines now appear clearly before gameplay begins.
+- Charm City sign moved higher, enlarged and brightened.
+- Added a second industrial waterfront-style neon skyline anchor.
+- Rats now spawn at roadway edges and remain primarily on the road.
+- Golden rats have a stronger glow.
+- Reduced tiny horizon clutter.
+- Added a softer distant-road haze.
