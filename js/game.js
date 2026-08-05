@@ -19,6 +19,7 @@ export class RatRunGame {
     this.last = 0;
     this.shake = 0;
     this.lastCountdown = null;
+    this.worldScroll = 0;
     this.resize();
     addEventListener("resize", () => this.resize());
     canvas.addEventListener("pointerdown", e => this.pointer(e));
@@ -48,6 +49,7 @@ export class RatRunGame {
     this.spawnClock = .15;
     this.shake = 0;
     this.lastCountdown = null;
+    this.worldScroll = 0;
     this.last = performance.now();
     startSound();
     this.hooks.onScore?.(0,0);
@@ -79,6 +81,7 @@ export class RatRunGame {
 
   update(dt) {
     this.elapsed += dt;
+    this.worldScroll += dt*(155 + this.elapsed*2.2);
     const remaining = Math.max(0, this.duration-this.elapsed);
     this.hooks.onTime?.(Math.ceil(remaining));
     const n = Math.ceil(remaining);
@@ -232,28 +235,30 @@ export class RatRunGame {
     sky.addColorStop(0,"#547eaa");sky.addColorStop(.65,"#a6bdd0");sky.addColorStop(1,"#d7b58c");
     c.fillStyle=sky;c.fillRect(0,0,w,h);
 
-    // FAR SKYLINE — low contrast, never competes with rats.
+    // FAR SKYLINE — slowest parallax layer.
+    const skylineDrift=(this.worldScroll*.025)%(w/15);
     c.fillStyle="#496075";
-    for(let i=0;i<16;i++){
-      const bw=w/15+8,bh=38+(i%5)*14;
-      c.fillRect(i*w/15-5,h*.27-bh,bw,bh);
+    for(let i=-1;i<17;i++){
+      const bw=w/15+8,bh=38+((i+16)%5)*14;
+      c.fillRect(i*w/15-5-skylineDrift,h*.27-bh,bw,bh);
     }
     c.fillStyle="#2f465b";
-    c.fillRect(w*.11,h*.13,22,h*.14);
-    c.fillRect(w*.105,h*.12,32,8);
+    c.fillRect(w*.11-skylineDrift*.35,h*.13,22,h*.14);
+    c.fillRect(w*.105-skylineDrift*.35,h*.12,32,8);
 
-    // BACKGROUND ROWHOUSES — muted and behind everything.
+    // BACKGROUND ROWHOUSES — slow parallax, visually anchored.
     const houseTop=h*.18,houseBottom=h*.42;
+    const houseDrift=(this.worldScroll*.045)%36;
     const colors=["#8d5148","#754941","#945c4e","#71504a","#96594b"];
     for(const side of[-1,1]){
       const start=side<0?0:w*.70;
       const end=side<0?w*.30:w;
-      const count=5;
-      for(let i=0;i<count;i++){
-        const x=start+(end-start)*i/count;
-        const bw=(end-start)/count+2;
-        const bh=houseBottom-houseTop-(i%3)*10;
-        c.fillStyle=colors[(i+(side>0?2:0))%colors.length];
+      const count=6;
+      for(let i=-1;i<count+1;i++){
+        const x=start+(end-start)*i/count + (side<0?-houseDrift:houseDrift);
+        const bw=(end-start)/count+3;
+        const bh=houseBottom-houseTop-(((i+12)%3)*10);
+        c.fillStyle=colors[((i+10)+(side>0?2:0))%colors.length];
         c.fillRect(x,houseBottom-bh,bw,bh);
         c.fillStyle="rgba(20,32,43,.72)";
         for(let row=0;row<3;row++) for(let col=0;col<2;col++){
@@ -264,14 +269,19 @@ export class RatRunGame {
       }
     }
 
-    // TREE LINE — middle depth and softer.
+    // TREE LINE — medium parallax, flowing toward the viewer.
     for(let i=0;i<10;i++){
       const side=i%2?-1:1;
-      const y=h*(.31+(i%5)*.045);
+      const band=(i%5)/5;
+      const phase=((band + (this.worldScroll*.00034))%1);
+      const y=h*(.31 + phase*.28);
       const edge=this.roadEdges(y);
-      const x=side<0?edge.left-34:edge.right+34;
-      c.fillStyle="#584632";c.fillRect(x-3,y-24,6,27);
-      c.fillStyle="#3f6545";c.beginPath();c.arc(x,y-31,15,0,Math.PI*2);c.fill();
+      const scale=.55+edge.t*.72;
+      const x=side<0?edge.left-34*scale:edge.right+34*scale;
+      c.save();c.translate(x,y);c.scale(scale,scale);
+      c.fillStyle="#584632";c.fillRect(-3,-24,6,27);
+      c.fillStyle="#3f6545";c.beginPath();c.arc(0,-31,15,0,Math.PI*2);c.fill();
+      c.restore();
     }
 
     // SIDEWALKS with perspective and curb shadows.
@@ -280,9 +290,11 @@ export class RatRunGame {
     c.beginPath();c.moveTo(0,h*.29);c.lineTo(horizon.left,h*.29);c.lineTo(bottom.left,h);c.lineTo(0,h);c.closePath();c.fill();
     c.beginPath();c.moveTo(horizon.right,h*.29);c.lineTo(w,h*.29);c.lineTo(w,h);c.lineTo(bottom.right,h);c.closePath();c.fill();
 
-    // Brick seams scale with depth.
+    // Brick seams move with perspective at a sidewalk speed.
     c.strokeStyle="rgba(85,64,57,.18)";c.lineWidth=1;
-    for(let y=h*.34;y<h;y+=34){
+    const brickOffset=(this.worldScroll*.58)%34;
+    for(let y=h*.34-brickOffset;y<h+34;y+=34){
+      if(y<h*.31)continue;
       const edge=this.roadEdges(y);
       c.beginPath();c.moveTo(0,y);c.lineTo(edge.left,y);c.moveTo(edge.right,y);c.lineTo(w,y);c.stroke();
     }
@@ -300,29 +312,35 @@ export class RatRunGame {
     road.addColorStop(0,"#4a5057");road.addColorStop(1,"#25292e");
     c.fillStyle=road;c.beginPath();c.moveTo(horizon.left,h*.29);c.lineTo(horizon.right,h*.29);c.lineTo(bottom.right,h);c.lineTo(bottom.left,h);c.closePath();c.fill();
 
-    // Road texture — subtle.
+    // Road texture — deterministic and scrolling toward the viewer.
     c.fillStyle="rgba(255,255,255,.035)";
-    for(let i=0;i<80;i++){
-      const y=h*.31+Math.random()*h*.69;
+    for(let i=0;i<90;i++){
+      const seed=(i*97)%997;
+      const phase=((seed/997 + this.worldScroll*.00062)%1);
+      const y=h*(.31 + phase*.69);
       const edge=this.roadEdges(y);
-      const x=edge.left+Math.random()*(edge.right-edge.left);
+      const x=edge.left + ((i*53)%101)/101*(edge.right-edge.left);
       c.fillRect(x,y,1+edge.t*3,1+edge.t*2);
     }
 
-    // Perspective lane markings.
+    // Perspective lane markings move and grow as they approach.
     c.strokeStyle="#d8c86a";c.lineCap="round";
-    for(let y=h*.35;y<h;y+=70){
+    const dashCycle=92;
+    const dashOffset=(this.worldScroll*.85)%dashCycle;
+    for(let y=h*.33-dashOffset;y<h+dashCycle;y+=dashCycle){
+      if(y<h*.30)continue;
       const edge=this.roadEdges(y);
       const t=edge.t;
-      const nextY=Math.min(h,y+24+38*t);
-      c.lineWidth=1.5+5*t;
+      const nextY=Math.min(h,y+18+52*t);
+      c.lineWidth=1.5+6*t;
       c.beginPath();c.moveTo(w*.5,y);c.lineTo(w*.5,nextY);c.stroke();
     }
 
-    // Street furniture only on sidewalk, correctly scaled.
-    for(let i=0;i<6;i++){
-      const y=h*(.42+i*.10);
-      const edge=this.roadEdges(y),scale=.45+edge.t*.85,side=i%2?-1:1;
+    // Street furniture uses the strongest sidewalk parallax.
+    for(let i=0;i<8;i++){
+      const phase=((i/8 + this.worldScroll*.00048)%1);
+      const y=h*(.34+phase*.63);
+      const edge=this.roadEdges(y),scale=.38+edge.t*.95,side=i%2?-1:1;
       const x=side<0?edge.left-23*scale:edge.right+23*scale;
       c.save();c.translate(x,y);c.scale(scale,scale);
       if(i%3===0){

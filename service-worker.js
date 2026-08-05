@@ -1,5 +1,5 @@
 
-const CACHE = "rat-run-depth-prototype-v1";
+const CACHE = "rat-run-depth-prototype-v11";
 const FILES = [
   "./",
   "./index.html",

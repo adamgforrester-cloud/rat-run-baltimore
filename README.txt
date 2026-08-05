@@ -32,3 +32,12 @@ Deliberately excluded
 
 Those systems should return only after this base street and rat movement are
 visually approved.
+
+
+DEPTH PROTOTYPE 1.1 — MOVING STREET
+- Road texture now flows toward the viewer.
+- Lane markings move and scale with depth.
+- Sidewalk brick seams scroll at a different speed.
+- Trees and street furniture use stronger parallax.
+- Buildings and skyline move more slowly.
+- Rat movement and global leaderboard remain unchanged.
