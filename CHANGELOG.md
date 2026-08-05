@@ -1,14 +1,11 @@
 # Rat Run: Baltimore Changelog
 
-## 2.1 — Actors Return + Street Layers
-- Preserved the stable 30-second core and global leaderboard.
-- Removed duplicate procedural rowhouses from the foreground overlay.
-- Corrected rendering order: buildings, sidewalks, actors, road traffic, bonuses.
-- Hydrants, benches, trees, bins and streetlights now remain on sidewalks.
-- Cars, taxis and buses now remain in road lanes.
-- Restored pedestrians and dogs.
-- Restored Public Risk penalties and eight-hit police response.
-- Restored five-hit Street Ghoul.
-- Restored Sewer Gator and Gator-Aid.
-- Restored bounded screen shake for Adam, major combos, police and Gator events.
-- Added isolated actor recovery so actor failures cannot end the round.
+## 2.5 — The Arcade Update
+- Fixed Street Ghoul hit detection, five-hit health and +100 clear bonus.
+- Restored traffic and reliable pedestrian, dog and car Public Risk penalties.
+- Added “BALTIMORE PD HAS BEEN DISPATCHED!” banner, red/blue flash and siren.
+- Fixed eight-hit police detection and +175 clear bonus.
+- Rebuilt dog, police and Sewer Gator canvas artwork.
+- Fixed six-hit Gator detection and Gator-Aid drop.
+- Restored and tuned screen shake.
+- Preserved global weekly/all-time leaderboard and 30-second rounds.

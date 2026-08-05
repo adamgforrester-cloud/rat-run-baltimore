@@ -166,3 +166,12 @@ VERSION 2.1 — ACTORS RETURN + STREET LAYERS
 - Sewer Gator and Gator-Aid restored.
 - Screen shake restored for major events.
 - Actor systems are isolated so they cannot crash the full game loop.
+
+
+VERSION 2.5 — THE ARCADE UPDATE
+- Combined gameplay repair and visual actor cleanup.
+- Working Ghoul, police and Gator health/damage.
+- Public Risk from pedestrians, dogs and cars.
+- Baltimore PD dispatch event.
+- Clearer dog, police and Gator artwork.
+- Screen shake restored.

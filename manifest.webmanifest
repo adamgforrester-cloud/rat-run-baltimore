@@ -1,7 +1,7 @@
 {
-  "name": "Rat Run: Baltimore 2.1",
-  "short_name": "Rat Run 2.1",
-  "description": "Actors Return update with corrected street layers, Public Risk police, Street Ghoul, Sewer Gator and global competition.",
+  "name": "Rat Run: Baltimore 2.5",
+  "short_name": "Rat Run 2.5",
+  "description": "The Arcade Update with repaired Public Risk, Baltimore PD dispatch, Ghoul, traffic, dogs and Sewer Gator.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#090b10",
