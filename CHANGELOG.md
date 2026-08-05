@@ -1,11 +1,10 @@
 # Rat Run: Baltimore Changelog
 
-## 2.5 — The Arcade Update
-- Fixed Street Ghoul hit detection, five-hit health and +100 clear bonus.
-- Restored traffic and reliable pedestrian, dog and car Public Risk penalties.
-- Added “BALTIMORE PD HAS BEEN DISPATCHED!” banner, red/blue flash and siren.
-- Fixed eight-hit police detection and +175 clear bonus.
-- Rebuilt dog, police and Sewer Gator canvas artwork.
-- Fixed six-hit Gator detection and Gator-Aid drop.
-- Restored and tuned screen shake.
-- Preserved global weekly/all-time leaderboard and 30-second rounds.
+## 2.0.1 — Traffic Test
+- Built directly from the stable 2.0 gold release.
+- Restored only cars, taxis and buses.
+- Vehicles use fixed road lanes.
+- Added isolated traffic update recovery.
+- Traffic is visual-only in this test release.
+- No pedestrians, dogs, Ghoul, police or Sewer Gator.
+- Global leaderboard and core 30-second clicker retained.

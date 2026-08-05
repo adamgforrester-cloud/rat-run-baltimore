@@ -1,7 +1,7 @@
 {
-  "name": "Rat Run: Baltimore 2.5",
-  "short_name": "Rat Run 2.5",
-  "description": "The Arcade Update with repaired Public Risk, Baltimore PD dispatch, Ghoul, traffic, dogs and Sewer Gator.",
+  "name": "Rat Run: Baltimore 2.0.1",
+  "short_name": "Rat Run 2.0.1",
+  "description": "Stable traffic test release with cars, taxis and buses restored in fixed road lanes.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#090b10",

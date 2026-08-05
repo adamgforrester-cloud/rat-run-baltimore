@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Rat Run: Baltimore 2.5 — Stability Release</title>
+<title>Rat Run: Baltimore 2.0.1 — Stability Release</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#15121d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -98,16 +98,6 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
 #stabilityBadge{position:absolute;right:14px;bottom:58px;font-size:11px;font-weight:1000;color:#b9ffca}
 #debugPanel{display:none;position:absolute;left:12px;top:155px;max-width:330px;padding:9px 11px;border-radius:10px;background:rgba(0,0,0,.82);font:12px/1.35 monospace;color:#b9ffca;white-space:pre-wrap;z-index:90}
 #debugPanel.show{display:block}
-
-#dispatchBanner{
- position:absolute;left:50%;top:28%;transform:translate(-50%,-50%) scale(.75);
- z-index:70;opacity:0;pointer-events:none;text-align:center;
- padding:14px 20px;border-radius:18px;background:rgba(6,9,16,.84);
- border:2px solid #8fd0ff;color:#fff;font-weight:1000;
- font-size:clamp(24px,6vw,58px);text-shadow:0 0 14px #000;transition:.18s
-}
-#dispatchBanner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-#dispatchBanner small{display:block;font-size:13px;letter-spacing:.16em;color:#ffb0aa;margin-top:6px}
 </style>
 </head>
 <body>
@@ -123,9 +113,9 @@ button:active{transform:translateY(4px);box-shadow:0 3px 0 #9c6d10}.tiny{font-si
  <div id="effects"><div id="cheeseEffect" class="effect">🧀 RAT FREEZE <span></span></div><div id="coffeeEffect" class="effect">☕ ×2 RUSH <span></span></div></div>
  <div id="neighborhood" class="pill">MOUNT VERNON</div>
  <div id="target" class="pill">TOP SCORE: <span id="topScore">0</span></div>
- <div id="milestone"></div><div id="riskMeter" class="pill">PUBLIC RISK: 0/3</div><div id="rewardBanner"></div><div id="dispatchBanner"></div>
+ <div id="milestone"></div><div id="riskMeter" class="pill">TRAFFIC TEST: ACTIVE</div><div id="rewardBanner"></div>
  <div id="combo"></div><div id="announcement"></div><div id="ghoulWarning"></div><div id="finalCountdown"></div><div id="personalBestFlash"></div><div id="comboBarWrap"><div id="comboBar"></div></div>
- <div id="mode" class="pill">Tap rats & bonuses • Hold to place a trap</div><div id="stabilityBadge" class="pill">2.5 THE ARCADE UPDATE</div><div id="debugPanel"></div>
+ <div id="mode" class="pill">Tap rats & bonuses • Hold to place a trap</div><div id="stabilityBadge" class="pill">2.0.1 TRAFFIC TEST</div><div id="debugPanel"></div>
  <div id="audioControls"><button id="musicBtn" class="audioBtn">♫ MUSIC ON</button><button id="soundBtn" class="audioBtn">🔊 FX ON</button></div>
  <button id="installBtn">INSTALL APP</button>
  <div id="message"><h1>Rat Run:<br>Baltimore</h1><p>Loading the shared leaderboard…</p></div>
@@ -140,7 +130,7 @@ let leaderboardOnline=false,lastLeaderboardError='';
 const announcement=document.getElementById('announcement'),neighborhoodEl=document.getElementById('neighborhood');
 const cheeseEffect=document.getElementById('cheeseEffect'),coffeeEffect=document.getElementById('coffeeEffect');
 const bestScoreEl=document.getElementById('bestScore'),topScoreEl=document.getElementById('topScore'),targetEl=document.getElementById('target');
-const policeAlert=document.getElementById('policeAlert'),milestoneEl=document.getElementById('milestone'),ghoulWarning=document.getElementById('ghoulWarning'),finalCountdown=document.getElementById('finalCountdown'),personalBestFlash=document.getElementById('personalBestFlash'),comboBar=document.getElementById('comboBar'),riskMeter=document.getElementById('riskMeter'),rewardBanner=document.getElementById('rewardBanner'),dispatchBanner=document.getElementById('dispatchBanner');
+const policeAlert=document.getElementById('policeAlert'),milestoneEl=document.getElementById('milestone'),ghoulWarning=document.getElementById('ghoulWarning'),finalCountdown=document.getElementById('finalCountdown'),personalBestFlash=document.getElementById('personalBestFlash'),comboBar=document.getElementById('comboBar'),riskMeter=document.getElementById('riskMeter'),rewardBanner=document.getElementById('rewardBanner');
 const musicBtn=document.getElementById('musicBtn'),soundBtn=document.getElementById('soundBtn');
 const adamImg=new Image(),cheeseImg=new Image(),coffeeImg=new Image();
 adamImg.src='./assets/adam-runner.png';cheeseImg.src='./assets/giant-cheese.svg';coffeeImg.src='./assets/coffee.svg';
@@ -153,7 +143,7 @@ let freezeTimer=0,coffeeTimer=0,announcementTimer=0,currentNeighborhood='MOUNT V
 let leaderboard=[],leaderScore=0,playerName='ADAM',recordAlerted=false,nearAlerted=false,milestonesHit=new Set(),sessionId='';
 let audioCtx=null,musicOn=true,soundOn=true,musicTimer=null,musicStep=0;
 const STABILITY_MODE=false;
-const FEATURES={ghoul:true,civilians:true,traffic:true,police:true,gator:true,screenShake:true};
+const FEATURES={traffic:true,civilians:false,ghoul:false,police:false,gator:false};
 let lastSystem='boot',frameErrors=0;const debugEnabled=new URLSearchParams(location.search).has('debug');
 let ghouls=[],ghoulTimer=10,lastCountdownNumber=null,floaters=[],screenShake=0,personalBestAnnounced=false,publicRisk=0,policeUnits=[],policeTimer=999,dogs=[],dogTimer=4,gators=[],gatorTimer=12,gatorAids=[],tripleTimer=0;
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -280,7 +270,7 @@ function wireLeaderboardButtons(){
 function showOpening(){
  if(!Array.isArray(leaderboard))leaderboard=[];
  if(!Array.isArray(weeklyLeaderboard))weeklyLeaderboard=[];
- message.innerHTML=`${dominoBoard(leaderboard)}<h1>Rat Run:<br>Baltimore</h1><p>Thirty seconds of fast, stable Rat Run. Catch rats, place traps, grab coffee and cheese, catch Adam, chase combos, and compete on the shared DOMINO SUGARS leaderboard. Experimental enemies are temporarily paused while we harden the core game.</p><input id="playerName" class="nameInput" maxlength="12" value="${playerName}" aria-label="Player name"><br><button id="start">START RUN</button>${leaderboardStatusMarkup()}<p class="tiny">Version 2.5 • Music and sound begin after Start.</p>`;
+ message.innerHTML=`${dominoBoard(leaderboard)}<h1>Rat Run:<br>Baltimore</h1><p>Thirty seconds of fast, stable Rat Run. Catch rats, place traps, grab coffee and cheese, catch Adam, chase combos, and compete on the shared DOMINO SUGARS leaderboard. Experimental enemies are temporarily paused while we harden the core game.</p><input id="playerName" class="nameInput" maxlength="12" value="${playerName}" aria-label="Player name"><br><button id="start">START RUN</button>${leaderboardStatusMarkup()}<p class="tiny">Version 2.0.1 • Music and sound begin after Start.</p>`;
  message.style.display='block';
  const inp=document.getElementById('playerName');inp.addEventListener('input',()=>playerName=cleanName(inp.value));
  document.getElementById('start').addEventListener('click',()=>{playerName=cleanName(inp.value);start()});wireLeaderboardButtons();
@@ -310,7 +300,7 @@ function reset(){
  rats=[];traps=[];particles=[];obstacles=[];decorations=[];adams=[];powerups=[];buildings=[];vehicles=[];pedestrians=[];pigeons=[];dogs=[];policeUnits=[];gators=[];gatorAids=[];ghouls=[];
  score=0;misses=0;elapsed=0;worldY=0;spawnTimer=.55;difficulty=1;combo=0;comboTimer=0;timeLeft=30;adamTimer=rand(7,11);powerTimer=rand(5,8);
  freezeTimer=0;coffeeTimer=0;announcementTimer=0;currentNeighborhood='MOUNT VERNON';vehicleTimer=2;pedTimer=3;pigeonTimer=4;
- recordAlerted=false;nearAlerted=false;milestonesHit=new Set();publicRisk=0;policeTimer=999;dogTimer=3;gatorTimer=8+Math.random()*8;tripleTimer=0;riskMeter.textContent='PUBLIC RISK: 0/3';riskMeter.classList.remove('danger');ghouls=[];ghoulTimer=2.5+Math.random()*2;lastCountdownNumber=null;floaters=[];screenShake=0;personalBestAnnounced=false;comboBar.style.width='0%';personalBestFlash.classList.remove('show');ghoulWarning.classList.remove('active');finalCountdown.classList.remove('show','danger');finalCountdown.textContent='';sessionId=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());policeAlert.classList.remove('active');milestoneEl.textContent='';
+ recordAlerted=false;nearAlerted=false;milestonesHit=new Set();publicRisk=0;policeTimer=999;dogTimer=3;gatorTimer=8+Math.random()*8;tripleTimer=0;riskMeter.textContent='TRAFFIC TEST: ACTIVE';riskMeter.classList.remove('danger');ghouls=[];ghoulTimer=2.5+Math.random()*2;lastCountdownNumber=null;floaters=[];screenShake=0;personalBestAnnounced=false;comboBar.style.width='0%';personalBestFlash.classList.remove('show');ghoulWarning.classList.remove('active');finalCountdown.classList.remove('show','danger');finalCountdown.textContent='';sessionId=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());policeAlert.classList.remove('active');milestoneEl.textContent='';
  scoreEl.textContent='0';missesEl.textContent='0';timeEl.textContent='30';neighborhoodEl.textContent=currentNeighborhood;
  cheeseEffect.style.display='none';coffeeEffect.style.display='none';
  for(let i=0;i<18;i++)addDecoration(-i*100);
@@ -364,7 +354,7 @@ function showReward(source,reward){
  rewardBanner.classList.add('show');
  setTimeout(()=>rewardBanner.classList.remove('show'),1500);
  addFloater(W*.5,H*.38,`+${reward.points}`,reward.tier==='HIGH'?'#ffe36e':'#ffffff',reward.tier==='HIGH'?36:26);
- if(reward.tier==='HIGH'){screenShake=Math.max(screenShake,14);sfx('record')}else sfx('milestone');
+ if(reward.tier==='HIGH'){screenShake=14;sfx('record')}else sfx('milestone');
 }
 function drinkBonus(source){
  sfx('drink');
@@ -382,23 +372,15 @@ function civilianStrike(kind,x,y){
  addFloater(x,y-30,`-${penalty} ${kind.toUpperCase()}`,'#ff766d',21);
  announce(kind==='dog'?'WATCH THE DOG!':kind==='pedestrian'?'CIVILIAN HIT!':'TRAFFIC HIT!','#ff766d');
  sfx('miss');updateHUD();
- if(FEATURES.police&&publicRisk>=3&&policeUnits.length===0)dispatchPolice('PUBLIC RISK');
+ if(publicRisk>=3&&policeUnits.length===0)dispatchPolice('PUBLIC RISK');
 }
 function flashPolice(text='POLICE DISPATCHED!'){
  policeAlert.classList.add('active');announce(text,'#8fd0ff');sfx('siren');
  setTimeout(()=>policeAlert.classList.remove('active'),1100);
 }
-function showDispatchBanner(title,subtitle=''){
- dispatchBanner.innerHTML=`${title}${subtitle?`<small>${subtitle}</small>`:''}`;
- dispatchBanner.classList.add('show');
- setTimeout(()=>dispatchBanner.classList.remove('show'),1700);
-}
 function dispatchPolice(reason){
- if(policeUnits.length)return;
- policeUnits.push({x:W+58,y:clamp(H*.64,130,H-88),vx:-115,hp:8,r:38,drain:1.3,reason,flash:0});
- flashPolice('BALTIMORE PD HAS BEEN DISPATCHED!');
- showDispatchBanner('🚨 BALTIMORE PD HAS BEEN DISPATCHED!',reason==='PUBLIC RISK'?'PUBLIC RISK LEVEL 3':'CHAMPION ALERT');
- screenShake=Math.max(screenShake,14);
+ policeUnits.push({x:W+55,y:clamp(H*.63,120,H-85),vx:-105,hp:8,r:36,drain:1.2,reason});
+ flashPolice(reason==='PUBLIC RISK'?'PUBLIC RISK — POLICE DISPATCHED!':'CHAMPION ALERT!');
 }
 function spawnDog(){
  const y=rand(H*.18,H*.42),b=roadBounds(y),fromLeft=Math.random()<.5;
@@ -407,65 +389,57 @@ function spawnDog(){
 function spawnGator(){
  const y=clamp(H*.62,150,H-90);
  gators.push({x:W*.5,y,hp:6,r:46,age:0,bite:1.2});
- announce('SEWER GATOR! TAP 6×','#9dff8a');sfx('gator');screenShake=Math.max(screenShake,12);
+ announce('SEWER GATOR! TAP 6×','#9dff8a');sfx('gator');screenShake=12;
 }
 function spawnGatorAid(x,y){gatorAids.push({x,y,r:35,life:6,age:0})}
 function hitSpecialActors(x,y){
  for(let i=policeUnits.length-1;i>=0;i--){
-  const p=policeUnits[i];
-  if(Math.hypot(x-p.x,y-p.y)<70){
-   p.hp--;p.flash=.16;score+=8;
-   addFloater(p.x,p.y-52,`+8 POLICE ${p.hp}/8`,'#8fd0ff',20);
-   screenShake=Math.max(screenShake,6);
-   if(p.hp<=0){
-    score+=175;addFloater(p.x,p.y-70,'+175 BPD CLEARED','#8fd0ff',27);
-    policeUnits.splice(i,1);publicRisk=0;riskMeter.textContent='PUBLIC RISK: 0/3';riskMeter.classList.remove('danger');
-    showDispatchBanner('BALTIMORE PD CLEARED','+175');screenShake=Math.max(screenShake,15);
-   }
-   updateHUD();return true;
+  const p=policeUnits[i];if(Math.hypot(x-p.x,y-p.y)<58){
+   p.hp--;score+=8;addFloater(p.x,p.y-45,'+8 POLICE HIT','#8fd0ff',19);
+   if(p.hp<=0){score+=175;addFloater(p.x,p.y-65,'+175 CLEARED','#8fd0ff',25);policeUnits.splice(i,1);publicRisk=0;riskMeter.textContent='TRAFFIC TEST: ACTIVE';riskMeter.classList.remove('danger')}
+   updateHUD();return true
   }
  }
  for(let i=gators.length-1;i>=0;i--){
-  const g=gators[i];
-  if(Math.hypot(x-g.x,y-g.y)<82){
-   g.hp--;g.flash=.16;score+=12;
-   addFloater(g.x,g.y-56,`+12 GATOR ${g.hp}/6`,'#b9ff93',20);
-   screenShake=Math.max(screenShake,7);
-   if(g.hp<=0){
-    score+=250;spawnGatorAid(g.x,g.y);gators.splice(i,1);
-    showDispatchBanner('🐊 GATOR DOWN!','GRAB THE GATOR-AID');screenShake=Math.max(screenShake,16);
-   }
-   updateHUD();return true;
+  const g=gators[i];if(Math.hypot(x-g.x,y-g.y)<68){
+   g.hp--;score+=12;addFloater(g.x,g.y-50,'+12 GATOR HIT','#b9ff93',19);
+   if(g.hp<=0){score+=250;spawnGatorAid(g.x,g.y);gators.splice(i,1);announce('GATOR DEFEATED — GRAB GATOR-AID!','#b9ff93')}
+   updateHUD();return true
   }
  }
  for(let i=gatorAids.length-1;i>=0;i--){
-  const a=gatorAids[i];
-  if(Math.hypot(x-a.x,y-a.y)<60){gatorAids.splice(i,1);drinkBonus('gator');return true}
+  const a=gatorAids[i];if(Math.hypot(x-a.x,y-a.y)<55){gatorAids.splice(i,1);drinkBonus('gator');return true}
  }
  for(let i=dogs.length-1;i>=0;i--){
-  const d=dogs[i];
-  if(Math.hypot(x-d.x,y-d.y)<40){civilianStrike('dog',d.x,d.y);dogs.splice(i,1);return true}
+  const d=dogs[i];if(Math.hypot(x-d.x,y-d.y)<34){civilianStrike('dog',d.x,d.y);dogs.splice(i,1);return true}
  }
- return false;
+ return false
 }
+
 function spawnVehicle(){
- const type=Math.random()<.2?'bus':Math.random()<.46?'taxi':'car';
- const y=-170,b=roadBounds(H*.24),center=(b.left+b.right)/2;
+ const typeRoll=Math.random();
+ const type=typeRoll<.18?'bus':typeRoll<.45?'taxi':'car';
+ const y=-160;
+ const b=roadBounds(H*.28);
+ const center=(b.left+b.right)/2;
  const lane=Math.random()<.5?-1:1;
- const x=center+lane*(type==='bus'?W*.105:W*.14);
+ const laneOffset=type==='bus'?W*.105:W*.145;
+ const x=center+lane*laneOffset;
+
  vehicles.push({
-  type,x,y,w:type==='bus'?76:55,h:type==='bus'?138:90,
-  vy:rand(175,225),lane,
-  color:type==='taxi'?'#e8bd35':['#476a87','#8b3d45','#3e7659','#6b576f'][Math.floor(rand(0,4))],
+  type,x,y,lane,
+  w:type==='bus'?72:54,
+  h:type==='bus'?132:86,
+  vy:type==='bus'?rand(145,175):rand(175,215),
+  color:type==='taxi'?'#e5b92f':['#486c87','#8f4148','#4d775e','#675674'][Math.floor(rand(0,4))],
   alive:true
  });
 }
 function spawnPedestrian(){
- const y=rand(H*.12,H*.30),b=roadBounds(y),side=Math.random()<.5?-1:1;
+ const y=rand(H*.12,H*.36),b=roadBounds(y),side=Math.random()<.5?-1:1;
  pedestrians.push({
-  x:side<0?b.left-rand(38,66):b.right+rand(38,66),y,side,
-  vy:rand(32,55),phase:rand(0,6.28),
-  shirt:['#e66b55','#54a7d8','#f1cb4e','#8359a8','#e8e8e8'][Math.floor(rand(0,5))],
+  x:side<0?b.left-rand(28,68):b.right+rand(28,68),y,side,
+  vy:rand(35,70),phase:rand(0,6.28),shirt:['#e66b55','#54a7d8','#f1cb4e','#8359a8','#e8e8e8'][Math.floor(rand(0,5))],
   alive:true
  });
 }
@@ -480,12 +454,11 @@ function placeTrap(x,y){const b=roadBounds(y);if(x<b.left+25||x>b.right-25)retur
 function burst(x,y,color,count=10){for(let i=0;i<count;i++)particles.push({x,y,vx:rand(-150,150),vy:rand(-155,75),life:rand(.35,.8),color,size:rand(2,7)})}
 
 function activatePowerup(p){
- if(p.type==='cheese'){freezeTimer=5;score+=100;addFloater(p.x,p.y-30,'CHEESE FREEZE!','#ffe15a',25);screenShake=Math.max(screenShake,7);sfx('cheese');announce('RATS FROZEN!','#ffe15a');burst(p.x,p.y,'#ffe15a',38)}
+ if(p.type==='cheese'){freezeTimer=5;score+=100;addFloater(p.x,p.y-30,'CHEESE FREEZE!','#ffe15a',25);screenShake=7;sfx('cheese');announce('RATS FROZEN!','#ffe15a');burst(p.x,p.y,'#ffe15a',38)}
  else{adamTimer=Math.min(adamTimer,1.1);drinkBonus('coffee');announce('CAFFEINE RUSH!','#e5a4ff');burst(p.x,p.y,'#c46cff',38)}
  updateHUD();
 }
 function hitTest(x,y){
- if(FEATURES.police||FEATURES.gator||FEATURES.civilians){if(hitSpecialActors(x,y))return;}
  setSystem('tap');
  for(let i=powerups.length-1;i>=0;i--){
   const p=powerups[i];
@@ -495,7 +468,7 @@ function hitTest(x,y){
   const a=adams[i];
   if(a&&Math.abs(x-a.x)<a.w*.52&&Math.abs(y-a.y)<a.h*.52){
    adams.splice(i,1);const earned=500*(coffeeTimer>0?2:1);score+=earned;combo+=5;comboTimer=1.8;
-   addFloater(a.x,a.y-40,`+${earned} ADAM!`,'#e8a8ff',30);screenShake=Math.max(screenShake,12);sfx('adam');burst(a.x,a.y,'#b72cff',34);updateHUD();return
+   addFloater(a.x,a.y-40,`+${earned} ADAM!`,'#e8a8ff',30);screenShake=12;sfx('adam');burst(a.x,a.y,'#b72cff',34);updateHUD();return
   }
  }
  for(let i=rats.length-1;i>=0;i--){
@@ -504,11 +477,10 @@ function hitTest(x,y){
    rats.splice(i,1);const earned=(10+combo*2)*(coffeeTimer>0?2:1);score+=earned;combo++;comboTimer=1.2;
    addFloater(r.x,r.y-16,`+${earned}`,combo>=8?'#ffe36e':'#fff',combo>=8?27:20);
    if(combo===5)announce('5× COMBO!','#ffe36e');
-   if(combo===10){announce('RAT MANIA!','#ff8a45');screenShake=Math.max(screenShake,8);sfx('milestone')}
+   if(combo===10){announce('RAT MANIA!','#ff8a45');screenShake=8;sfx('milestone')}
    sfx('rat');burst(r.x,r.y,'#e9dfc5',combo>=10?20:12);updateHUD();return
   }
  }
- for(const v of vehicles){if(Math.abs(x-v.x)<v.w*.58&&Math.abs(y-v.y)<v.h*.52){civilianStrike('car',x,y);return}}
  for(const o of obstacles){
   if(o&&Math.hypot(x-o.x,y-o.y)<o.r+10){score=Math.max(0,score-10);combo=0;addFloater(x,y,'-10','#ff766d',18);burst(x,y,'#e45858',10);updateHUD();return}
  }
@@ -536,7 +508,7 @@ function spawnGhoul(){
   drainCooldown:2,
   dir:fromLeft?1:-1
  });
- ghoulWarning.textContent='STREET GHOUL — TAP IT 5×';
+ ghoulWarning.textContent='STREET GHOUL — TAP IT 3×';
  ghoulWarning.classList.add('active');
  setTimeout(()=>ghoulWarning.classList.remove('active'),1200);
 }
@@ -554,7 +526,7 @@ function updateGhouls(dt){
   const g=ghouls[i];
   if(!g){ghouls.splice(i,1);continue}
 
-  g.eatCooldown-=dt;g.flash=Math.max(0,(g.flash||0)-dt);
+  g.eatCooldown-=dt;
   g.drainCooldown-=dt;
 
   let target=null;
@@ -609,7 +581,7 @@ function drawGhouls(){
   ctx.fillStyle='rgba(0,0,0,.3)';
   ctx.beginPath();ctx.ellipse(0,38,27,8,0,0,Math.PI*2);ctx.fill();
 
-  ctx.fillStyle=g.flash>0?'#e5ffbd':'#93b96f';
+  ctx.fillStyle='#93b96f';
   ctx.fillRect(-17,-10,34,40);
 
   ctx.fillStyle='#34422f';
@@ -645,15 +617,23 @@ function drawGhouls(){
 function hitGhoul(x,y){
  for(let i=ghouls.length-1;i>=0;i--){
   const g=ghouls[i];
-  if(Math.hypot(x-g.x,y-g.y)<68){
-   g.hp--;g.flash=.18;score+=10;
-   addFloater(g.x,g.y-48,`+10 GHOUL ${g.hp}/5`,'#baff91',21);
-   screenShake=Math.max(screenShake,6);
+  if(Math.hypot(x-g.x,y-g.y)<60){
+   g.hp-=1;
+   score+=10;
+   addFloater(g.x,g.y-42,'+10 HIT','#baff91',20);
    if(g.hp<=0){
-    score+=100;addFloater(g.x,g.y-70,'+100 GHOUL CLEARED!','#baff91',27);
-    ghouls.splice(i,1);ghoulTimer=8;showDispatchBanner('GHOUL CLEARED','+100');screenShake=Math.max(screenShake,14);
+    score+=75;
+    addFloater(g.x,g.y-62,'+75 GHOUL GONE!','#baff91',25);
+    ghouls.splice(i,1);
+    ghoulTimer=7;
+    ghoulWarning.textContent='GHOUL CLEARED! +75';
+   }else{
+    ghoulWarning.textContent=`GHOUL HIT — ${g.hp} LEFT`;
    }
-   updateHUD();return true;
+   ghoulWarning.classList.add('active');
+   setTimeout(()=>ghoulWarning.classList.remove('active'),650);
+   updateHUD();
+   return true;
   }
  }
  return false;
@@ -665,7 +645,7 @@ function addFloater(x,y,text,color='#fff',size=20){
 function updateFloaters(dt){
  for(const f of floaters){f.y+=f.vy*dt;f.life-=dt}
  floaters=floaters.filter(f=>f.life>0);
- if(screenShake>0)screenShake=Math.max(0,screenShake-dt*34);
+ if(screenShake>0)screenShake=Math.max(0,screenShake-dt*28);
 }
 function drawFloaters(){
  ctx.save();
@@ -724,84 +704,25 @@ canvas.addEventListener('pointerdown',e=>{if(!running)return;pointer.x=e.clientX
 canvas.addEventListener('pointermove',e=>{if(pointer.down&&Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>12)pointer.moved=true});
 canvas.addEventListener('pointerup',e=>{if(!running)return;const held=performance.now()-pointer.downAt;pointer.down=false;if(held>360&&!pointer.moved)placeTrap(e.clientX,e.clientY);else hitTest(e.clientX,e.clientY)});
 
-function safeActorUpdate(dt){
+function updateTrafficOnly(dt){
+ if(!FEATURES.traffic){vehicles=[];return}
  try{
-  setSystem('actors');
-
-  if(FEATURES.traffic){
-   vehicleTimer-=dt;
-   if(vehicleTimer<=0){spawnVehicle();vehicleTimer=rand(3.4,5.8)}
-   for(let i=pedestrians.length-1;i>=0;i--){
-  const p=pedestrians[i];
-  if(Math.hypot(x-p.x,y-p.y)<38){civilianStrike('pedestrian',p.x,p.y);pedestrians.splice(i,1);return}
- }
- for(const v of vehicles){
-    if(!v)continue;
-    v.y+=v.vy*dt;
-    if(v.y>H+190)v.alive=false;
-   }
-   vehicles=vehicles.filter(v=>v&&v.alive!==false);
-  }else vehicles=[];
-
-  if(FEATURES.civilians){
-   pedTimer-=dt;if(pedTimer<=0){spawnPedestrian();pedTimer=rand(3,5.6)}
-   dogTimer-=dt;if(dogTimer<=0){spawnDog();dogTimer=rand(4.5,7.5)}
-
-   for(const p of pedestrians){
-    if(!p)continue;p.phase+=dt*7;p.y+=p.vy*dt;
-    if(p.y>H+80)p.alive=false;
-   }
-   pedestrians=pedestrians.filter(p=>p&&p.alive!==false);
-
-   for(const d of dogs){
-    if(!d)continue;d.phase+=dt*8;d.x+=d.vx*dt;d.y+=Math.sin(d.phase)*7*dt;
-    if(d.x<-90||d.x>W+90)d.alive=false;
-   }
-   dogs=dogs.filter(d=>d&&d.alive!==false);
-  }else{pedestrians=[];dogs=[]}
-
-  if(FEATURES.ghoul)updateGhouls(dt);else ghouls=[];
-
-  if(FEATURES.police){
-   for(const p of policeUnits){
-    if(!p)continue;
-    p.x+=p.vx*dt;p.x=clamp(p.x,55,W-55);p.drain-=dt;p.flash=Math.max(0,(p.flash||0)-dt);
-    if(p.drain<=0){
-     score=Math.max(0,score-10);
-     addFloater(p.x,p.y-48,'-10 POLICE','#8fd0ff',18);
-     p.drain=1.45;updateHUD();
-    }
-   }
-  }else policeUnits=[];
-
-  if(FEATURES.gator){
-   gatorTimer-=dt;
-   if(gatorTimer<=0&&gators.length===0&&gatorAids.length===0){
-    spawnGator();gatorTimer=22+Math.random()*12;
-   }
-   for(const g of gators){
-    if(!g)continue;g.age+=dt;g.bite-=dt;g.flash=Math.max(0,(g.flash||0)-dt);
-    if(g.bite<=0&&rats.length){
-     const r=rats[Math.floor(Math.random()*rats.length)];
-     const idx=rats.indexOf(r);
-     if(idx>=0)rats.splice(idx,1);
-     score=Math.max(0,score-10);
-     addFloater(g.x,g.y-52,'GATOR ATE RAT -10','#b9ff93',18);
-     g.bite=1.7;updateHUD();
-    }
-   }
-   for(const a of gatorAids){if(!a)continue;a.age+=dt;a.life-=dt;if(a.life<=0)a.dead=true}
-   gatorAids=gatorAids.filter(a=>a&&!a.dead);
-  }else{gators=[];gatorAids=[]}
+  vehicleTimer-=dt;
+  if(vehicleTimer<=0){
+   spawnVehicle();
+   vehicleTimer=rand(2.6,4.4);
+  }
+  for(const v of vehicles){
+   if(!v)continue;
+   v.y+=v.vy*dt;
+   if(v.y>H+170)v.alive=false;
+  }
+  vehicles=vehicles.filter(v=>v&&v.alive!==false);
  }catch(error){
-  console.error('Actor subsystem recovered:',error);
-  lastSystem='actor recovery';
-  // Remove only actor arrays, never terminate the round.
-  vehicles=[];pedestrians=[];dogs=[];ghouls=[];policeUnits=[];gators=[];gatorAids=[];
-  ghoulTimer=8;gatorTimer=18;vehicleTimer=4;pedTimer=4;dogTimer=5;
+  console.error('Traffic subsystem recovered:',error);
+  vehicles=[];vehicleTimer=3;
  }
 }
-
 
 function update(dt){
  setSystem('clock');updateFloaters(dt);
@@ -849,7 +770,7 @@ function update(dt){
  powerups=powerups.filter(p=>p&&p.alive!==false);
  for(const t of traps){if(!t)continue;t.life-=dt;t.armed-=dt;t.y+=scroll}traps=traps.filter(t=>t&&t.life>0&&t.y<H+70);
 
- safeActorUpdate(dt);
+ updateTrafficOnly(dt);
 
  setSystem('particles');
  for(const p of particles){if(!p)continue;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*dt;p.life-=dt}
@@ -908,52 +829,75 @@ function drawBuilding(b){
 }
 
 function drawBaltimoreStreets(){
- // Sidewalk furniture only. Buildings are drawn in the background layer,
- // and moving traffic is drawn later in the road layer.
- for(let i=0;i<8;i++){
-  const y=((i*128+worldY*.78)%(H+180))-80;
-  const b=roadBounds(y);
-  const side=i%2?-1:1;
-  const sidewalkInner=side<0?b.left-26:b.right+26;
-  const sidewalkOuter=side<0?b.left-72:b.right+72;
-  const x=i%3===0?sidewalkOuter:sidewalkInner;
+ const b0=roadBounds(0),b1=roadBounds(H);
+ // Brick sidewalks.
+ ctx.fillStyle='#8b554b';
+ ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(b0.left,0);ctx.lineTo(b1.left,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+ ctx.beginPath();ctx.moveTo(b0.right,0);ctx.lineTo(W,0);ctx.lineTo(W,H);ctx.lineTo(b1.right,H);ctx.closePath();ctx.fill();
 
-  ctx.save();ctx.translate(x,y);
-  if(i%5===0){
-   // Tree beside curb.
-   ctx.fillStyle='#55402f';ctx.fillRect(-4,-39,8,43);
-   ctx.fillStyle='#315c38';ctx.beginPath();ctx.arc(0,-47,20,0,Math.PI*2);ctx.fill();
-  }else if(i%5===1){
-   // Bench.
-   ctx.fillStyle='#52392c';ctx.fillRect(-24,-11,48,7);
-   ctx.fillRect(-19,-4,5,17);ctx.fillRect(14,-4,5,17);
-  }else if(i%5===2){
-   // Hydrant, firmly on the curb.
-   ctx.fillStyle='#c43d35';ctx.fillRect(-7,-20,14,28);
-   ctx.fillRect(-13,-12,26,8);
-   ctx.beginPath();ctx.arc(0,-20,8,Math.PI,0);ctx.fill();
-  }else if(i%5===3){
-   // Trash can.
-   ctx.fillStyle='#193a27';ctx.fillRect(-12,-24,24,34);
-   ctx.fillStyle='#31533b';ctx.fillRect(-15,-28,30,6);
-  }else{
-   // Streetlamp.
-   ctx.strokeStyle='#17181b';ctx.lineWidth=5;
-   ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-55);ctx.quadraticCurveTo(0,-70,15,-70);ctx.stroke();
-   ctx.fillStyle='#ffe7a2';ctx.beginPath();ctx.arc(17,-70,7,0,Math.PI*2);ctx.fill();
+ // Brick seams, subtle and less cluttered.
+ ctx.strokeStyle='rgba(245,203,188,.19)';ctx.lineWidth=1;
+ for(let y=((worldY*.45)%34)-34;y<H+34;y+=34){
+  const b=roadBounds(y);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(b.left,y);ctx.moveTo(b.right,y);ctx.lineTo(W,y);ctx.stroke();
+ }
+ for(let x=18;x<W;x+=42){
+  ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+ }
+
+ // Rowhouses on both sides.
+ const colors=['#8b3e35','#a44b3a','#71362f','#a95a42','#684038'];
+ for(const side of[-1,1]){
+  for(let i=0;i<5;i++){
+   const y=((i*190+worldY*.7)%(H+250))-160;
+   const w=72+((i*17+(side>0?11:3))%30);
+   const h=122+((i*29+(side>0?19:7))%46);
+   const rb=roadBounds(y);
+   const x=side<0?rb.left-w-30:rb.right+30;
+   ctx.fillStyle=colors[(i+(side>0?2:0))%colors.length];ctx.fillRect(x,y-h,w,h);
+   ctx.fillStyle='#32242a';ctx.fillRect(x-3,y-h-7,w+6,9);
+   for(let row=0;row<3;row++)for(let col=0;col<2;col++){
+    const wx=x+12+col*(w*.48),wy=y-h+25+row*36;
+    ctx.fillStyle='#243746';ctx.fillRect(wx,wy,15,21);
+    ctx.strokeStyle='#c5b59b';ctx.strokeRect(wx,wy,15,21);
+   }
+   ctx.fillStyle='#d1c8b9';ctx.fillRect(x+w*.42,y-45,w*.18,45);
+   for(let s=0;s<3;s++){ctx.fillRect(x+w*.24-s*3,y+s*7,w*.52+s*6,5)}
   }
+ }
+
+ // Trees, benches, hydrants, bins and parked cars — no repeated sign forest.
+ for(let i=0;i<7;i++){
+  const y=((i*145+worldY*.8)%(H+180))-80,b=roadBounds(y),side=i%2?-1:1;
+  const offset=42+((i*13)%24);const x=side<0?b.left-offset:b.right+offset;
+  if(i%4===0){
+   ctx.fillStyle='#5b3d2a';ctx.fillRect(x-3,y-30,6,34);
+   ctx.fillStyle='#315f39';ctx.beginPath();ctx.arc(x,y-37,18,0,7);ctx.fill();
+  }else if(i%4===1){
+   ctx.fillStyle='#52392c';ctx.fillRect(x-25,y-10,50,6);ctx.fillRect(x-20,y-4,5,15);ctx.fillRect(x+15,y-4,5,15);
+  }else if(i%4===2){
+   ctx.fillStyle='#c13f35';ctx.fillRect(x-7,y-18,14,25);ctx.beginPath();ctx.arc(x,y-18,8,0,7);ctx.fill();
+  }else{
+   ctx.fillStyle='#1f3c29';ctx.fillRect(x-13,y-19,26,34);ctx.fillStyle='#345a3d';ctx.fillRect(x-16,y-22,32,6);
+  }
+ }
+ for(let i=0;i<4;i++){
+  const y=((i*240+worldY*.9)%(H+300))-160,b=roadBounds(y),side=i%2?-1:1;
+  const x=side<0?b.left-72:b.right+72;
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle=['#3e6d89','#8c3f46','#394a3c','#b07b31'][i%4];
+  ctx.beginPath();ctx.roundRect(-30,-44,60,88,9);ctx.fill();
+  ctx.fillStyle='#1b2b34';ctx.fillRect(-20,-30,40,20);
+  ctx.fillStyle='#171719';ctx.beginPath();ctx.arc(-20,33,6,0,7);ctx.arc(20,33,6,0,7);ctx.fill();
   ctx.restore();
  }
 
- // Occasional signs, kept on the outer sidewalk edge.
- if(Math.floor(elapsed)%20<4){
-  const y=H*.18,b=roadBounds(y);
-  for(const [x,label] of [[b.left-78,'CHARLES ST'],[b.right+78,'READ ST']]){
-   ctx.strokeStyle='#292c30';ctx.lineWidth=4;
-   ctx.beginPath();ctx.moveTo(x,y+30);ctx.lineTo(x,y-31);ctx.stroke();
-   ctx.fillStyle='#21774e';ctx.fillRect(x-35,y-35,70,19);
-   ctx.fillStyle='#fff';ctx.font='900 9px system-ui';ctx.textAlign='center';
-   ctx.fillText(label,x,y-22);
+ // Only two occasional Baltimore street signs.
+ if(Math.floor(elapsed)%20<5){
+  const y=H*.19,b=roadBounds(y);
+  for(const [x,label] of [[b.left-55,'CHARLES ST'],[b.right+55,'READ ST']]){
+   ctx.strokeStyle='#282b2f';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x,y+30);ctx.lineTo(x,y-30);ctx.stroke();
+   ctx.fillStyle='#207c51';ctx.fillRect(x-36,y-34,72,20);
+   ctx.fillStyle='#fff';ctx.font='900 9px system-ui';ctx.textAlign='center';ctx.fillText(label,x,y-20);
   }
  }
 }
@@ -993,50 +937,33 @@ function drawPowerup(p){const img=p.type==='cheese'?cheeseImg:coffeeImg;if(!img.
 
 function drawDog(d){
  ctx.save();ctx.translate(d.x,d.y);ctx.scale(d.vx<0?-1:1,1);
- ctx.fillStyle='#7a5235';ctx.beginPath();ctx.ellipse(0,0,22,12,0,0,Math.PI*2);ctx.fill();
- ctx.beginPath();ctx.arc(17,-7,10,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#9b6b45';ctx.beginPath();ctx.ellipse(27,-5,8,5,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle='#4a3022';ctx.beginPath();ctx.moveTo(13,-14);ctx.lineTo(16,-27);ctx.lineTo(21,-14);ctx.fill();
- ctx.strokeStyle='#5c3c29';ctx.lineWidth=5;ctx.lineCap='round';const step=Math.sin(d.phase)*4;
- ctx.beginPath();ctx.moveTo(-13,7);ctx.lineTo(-15+step,23);ctx.moveTo(10,7);ctx.lineTo(12-step,23);ctx.stroke();
- ctx.strokeStyle='#7a5235';ctx.beginPath();ctx.moveTo(-21,-2);ctx.quadraticCurveTo(-34,-16,-38,-4);ctx.stroke();
- ctx.fillStyle='#111';ctx.beginPath();ctx.arc(21,-9,2,0,Math.PI*2);ctx.fill();
- ctx.strokeStyle='#d94a43';ctx.lineWidth=3;ctx.beginPath();ctx.arc(16,-5,9,-.3,1.6);ctx.stroke();
- ctx.restore();
+ ctx.fillStyle='#6b4a31';ctx.beginPath();ctx.ellipse(0,0,19,11,0,0,7);ctx.fill();
+ ctx.beginPath();ctx.arc(16,-5,8,0,7);ctx.fill();
+ ctx.strokeStyle='#6b4a31';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-13,6);ctx.lineTo(-15,18);ctx.moveTo(9,6);ctx.lineTo(11,18);ctx.stroke();
+ ctx.strokeStyle='#4a3022';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-18,-2);ctx.quadraticCurveTo(-28,-12,-31,-3);ctx.stroke();ctx.restore()
 }
-
 function drawPolice(){
  for(const p of policeUnits){
-  ctx.save();ctx.translate(p.x,p.y);if(p.flash>0){ctx.shadowColor='#fff';ctx.shadowBlur=24}
-  ctx.fillStyle='#274a79';ctx.fillRect(-18,-12,36,46);
-  ctx.fillStyle='#1b2c48';ctx.fillRect(-20,22,40,13);
-  ctx.strokeStyle='#274a79';ctx.lineWidth=8;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(-15,-4);ctx.lineTo(-30,14);ctx.moveTo(15,-4);ctx.lineTo(30,14);ctx.stroke();
-  ctx.fillStyle='#d4a17f';ctx.beginPath();ctx.arc(0,-29,15,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#182a45';ctx.fillRect(-17,-45,34,9);ctx.fillRect(-10,-52,20,9);
-  ctx.fillStyle='#ffe36e';ctx.beginPath();ctx.arc(0,4,5,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#8fd0ff';ctx.font='900 13px system-ui';ctx.textAlign='center';ctx.fillText(`BPD ${p.hp}/8`,0,-59);
-  ctx.shadowBlur=0;ctx.restore();
+  ctx.save();ctx.translate(p.x,p.y);
+  ctx.fillStyle='#274a79';ctx.fillRect(-17,-13,34,44);
+  ctx.fillStyle='#d5a27f';ctx.beginPath();ctx.arc(0,-26,15,0,7);ctx.fill();
+  ctx.fillStyle='#1b2c48';ctx.fillRect(-16,-43,32,10);
+  ctx.fillStyle='#ffe36e';ctx.beginPath();ctx.arc(0,3,5,0,7);ctx.fill();
+  ctx.fillStyle='#8fd0ff';ctx.font='900 12px system-ui';ctx.textAlign='center';ctx.fillText(`POLICE ${p.hp}/8`,0,-52);
+  ctx.restore()
  }
 }
-
 function drawGators(){
  for(const g of gators){
-  ctx.save();ctx.translate(g.x,g.y);if(g.flash>0){ctx.shadowColor='#eaffcf';ctx.shadowBlur=25}
-  ctx.fillStyle='#3e7b4d';ctx.beginPath();ctx.moveTo(-44,0);ctx.lineTo(-78,-16);ctx.lineTo(-68,9);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.ellipse(-5,0,48,24,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#5a9960';ctx.beginPath();ctx.roundRect(24,-19,54,38,14);ctx.fill();
-  ctx.fillStyle='#6fad6d';ctx.beginPath();ctx.roundRect(55,-13,34,26,10);ctx.fill();
-  ctx.fillStyle='#f4f3d7';ctx.beginPath();ctx.arc(42,-18,7,0,Math.PI*2);ctx.arc(59,-18,7,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(43,-18,3,0,Math.PI*2);ctx.arc(60,-18,3,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#16351f';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(53,2);ctx.lineTo(86,2);ctx.stroke();
-  ctx.fillStyle='#fff';for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(58+i*7,1);ctx.lineTo(61+i*7,8);ctx.lineTo(64+i*7,1);ctx.fill()}
-  ctx.fillStyle='#315e3c';ctx.beginPath();ctx.ellipse(-22,20,13,6,0,0,Math.PI*2);ctx.ellipse(20,20,13,6,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#b9ff93';ctx.font='900 13px system-ui';ctx.textAlign='center';ctx.fillText(`SEWER GATOR ${g.hp}/6`,0,-38);
-  ctx.shadowBlur=0;ctx.restore();
+  ctx.save();ctx.translate(g.x,g.y);
+  ctx.fillStyle='#477347';ctx.beginPath();ctx.ellipse(0,0,48,24,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.moveTo(-42,0);ctx.lineTo(-76,-14);ctx.lineTo(-66,8);ctx.fill();
+  ctx.fillStyle='#5f925c';ctx.beginPath();ctx.arc(36,-4,24,0,7);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(44,-10,4,0,7);ctx.fill();ctx.fillStyle='#111';ctx.beginPath();ctx.arc(45,-10,2,0,7);ctx.fill();
+  ctx.fillStyle='#b9ff93';ctx.font='900 13px system-ui';ctx.textAlign='center';ctx.fillText(`SEWER GATOR ${g.hp}/6`,0,-35);
+  ctx.restore()
  }
 }
-
 function drawGatorAids(){
  for(const a of gatorAids){
   ctx.save();ctx.translate(a.x,a.y+Math.sin(a.age*6)*6);ctx.rotate(Math.sin(a.age*4)*.12);
@@ -1082,26 +1009,13 @@ function drawPigeon(p){
 
 function draw(){
  setSystem('drawing');ctx.save();
- if(FEATURES.screenShake&&screenShake>0)ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));
+ if(screenShake>0)ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));
  drawStreet();
-
- // BACK/SIDEWALK ACTORS: remain outside the road.
  decorations.filter(Boolean).sort((a,b)=>a.y-b.y).forEach(drawDecor);
- if(FEATURES.civilians){
-  pedestrians.filter(Boolean).forEach(drawPedestrian);
-  dogs.filter(Boolean).forEach(drawDog);
- }
-
- // ROAD GAMEPLAY LAYER.
  obstacles.filter(Boolean).forEach(drawObstacle);
  traps.filter(Boolean).forEach(drawTrap);
  rats.filter(Boolean).forEach(drawRat);
- if(FEATURES.ghoul)drawGhouls();
- if(FEATURES.gator){drawGators();drawGatorAids()}
- if(FEATURES.police)drawPolice();
  if(FEATURES.traffic)vehicles.filter(Boolean).forEach(drawVehicle);
-
- // BONUSES ABOVE ACTORS.
  powerups.filter(Boolean).forEach(drawPowerup);
  adams.filter(Boolean).forEach(drawAdam);
  for(const p of particles){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size)}ctx.globalAlpha=1;

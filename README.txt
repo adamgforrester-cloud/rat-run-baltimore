@@ -155,23 +155,9 @@ VERSION 2.0 — STABILITY RELEASE
 - Frame errors are recovered without ending the round.
 
 
-VERSION 2.1 — ACTORS RETURN + STREET LAYERS
-- Core game and global leaderboard retained.
-- Graphics layering corrected.
-- Props stay on sidewalks.
-- Traffic stays on the roadway.
-- Pedestrians and dogs restored.
-- Public Risk and police restored.
-- Five-hit Street Ghoul restored.
-- Sewer Gator and Gator-Aid restored.
-- Screen shake restored for major events.
-- Actor systems are isolated so they cannot crash the full game loop.
-
-
-VERSION 2.5 — THE ARCADE UPDATE
-- Combined gameplay repair and visual actor cleanup.
-- Working Ghoul, police and Gator health/damage.
-- Public Risk from pedestrians, dogs and cars.
-- Baltimore PD dispatch event.
-- Clearer dog, police and Gator artwork.
-- Screen shake restored.
+VERSION 2.0.1 — TRAFFIC TEST
+- Stable 2.0 base retained.
+- Cars, taxis and buses restored in fixed road lanes.
+- Traffic cannot crash the main round.
+- Traffic is not yet a penalty target.
+- Other experimental actors remain disabled.
