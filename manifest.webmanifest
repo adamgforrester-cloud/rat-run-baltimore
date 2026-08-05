@@ -1,6 +1,6 @@
 {
-  "name": "Rat Run: Baltimore \u2014 Depth Prototype 1.1",
-  "short_name": "Rat Run 1.1",
+  "name": "Rat Run: Baltimore \u2014 The Living City 1.2",
+  "short_name": "Rat Run 1.2",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#07101e",
@@ -17,5 +17,5 @@
       "type": "image/png"
     }
   ],
-  "description": "Moving street depth prototype with parallax, scrolling road texture and darting rats."
+  "description": "A denser living Baltimore street with perspective, animated rats and a shared global leaderboard."
 }

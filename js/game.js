@@ -16,6 +16,8 @@ export class RatRunGame {
     this.particles = [];
     this.floaters = [];
     this.spawnClock = 0;
+    this.minimumRats = 6;
+    this.maximumRats = 11;
     this.last = 0;
     this.shake = 0;
     this.lastCountdown = null;
@@ -99,10 +101,10 @@ export class RatRunGame {
     }
 
     this.spawnClock -= dt;
-    const desired = Math.min(9, 3 + Math.floor(this.elapsed/5));
+    const desired = Math.min(this.maximumRats, this.minimumRats + Math.floor(this.elapsed/7));
     if (this.spawnClock <= 0 && this.rats.length < desired) {
       this.spawnRat();
-      this.spawnClock = Math.max(.26,.62-this.elapsed*.009);
+      this.spawnClock = Math.max(.16,.34-this.elapsed*.004);
     }
 
     for (const rat of this.rats) this.updateRat(rat,dt);
@@ -139,8 +141,12 @@ export class RatRunGame {
       depth,
       gait:Math.random()*Math.PI*2,
       state:"dash",
-      stateClock:.25+Math.random()*.65,
+      stateClock:.20+Math.random()*.55,
       zig:Math.random()<.5?-1:1,
+      laneGoal:y,
+      panicClock:1.2+Math.random()*2.6,
+      look:Math.random()*Math.PI*2,
+      turn:0,
       life:9,
       squash:0,
       value: Math.random()<.055 ? 50 : 10
@@ -149,31 +155,46 @@ export class RatRunGame {
 
   updateRat(r,dt) {
     r.life -= dt;
-    r.gait += dt*(12 + Math.abs(r.vx)*.025);
+    r.gait += dt*(13 + Math.abs(r.vx)*.03);
+    r.look += dt*5;
     r.stateClock -= dt;
+    r.panicClock -= dt;
     r.squash = Math.max(0,r.squash-dt*5);
+    r.turn += (0-r.turn)*Math.min(1,dt*9);
 
-    if (r.stateClock <= 0) {
+    if (r.panicClock <= 0) {
+      r.state = "panic";
+      r.stateClock = .20 + Math.random()*.28;
+      r.panicClock = 1.8 + Math.random()*3.2;
+      r.laneGoal = Math.max(this.height*.44, Math.min(this.height*.93, r.baseY + (Math.random()-.5)*115*r.depth));
+      r.turn = (Math.random()<.5?-1:1)*.22;
+    } else if (r.stateClock <= 0) {
       const roll = Math.random();
-      if (roll < .18) {
+      if (roll < .16) {
         r.state = "pause";
-        r.stateClock = .10+Math.random()*.28;
-      } else if (roll < .52) {
-        r.state = "zig";
+        r.stateClock = .08 + Math.random()*.20;
+      } else if (roll < .46) {
+        r.state = "weave";
         r.zig *= -1;
-        r.stateClock = .22+Math.random()*.5;
+        r.laneGoal = Math.max(this.height*.40, Math.min(this.height*.94, r.baseY + r.zig*(24+Math.random()*52)*r.depth));
+        r.turn = r.zig*.12;
+        r.stateClock = .24 + Math.random()*.48;
       } else {
         r.state = "dash";
-        r.stateClock = .28+Math.random()*.7;
-        r.vx *= 1.03+Math.random()*.08;
+        r.stateClock = .24 + Math.random()*.58;
       }
     }
 
-    const speedScale = r.state==="pause" ? .12 : r.state==="dash" ? 1.08 : .82;
+    const speedScale =
+      r.state==="pause" ? .10 :
+      r.state==="panic" ? 1.62 :
+      r.state==="dash" ? 1.08 : .82;
+
     r.x += r.vx*speedScale*dt;
-    const footWobble = Math.sin(r.gait)*2.5*r.depth;
-    const zig = r.state==="zig" ? r.zig*38*r.depth : 0;
-    r.y += (r.baseY + footWobble + zig - r.y)*Math.min(1,dt*8);
+
+    const footWobble = Math.sin(r.gait)*2.7*r.depth;
+    const targetY = r.state==="weave" || r.state==="panic" ? r.laneGoal : r.baseY;
+    r.y += (targetY + footWobble - r.y)*Math.min(1,dt*(r.state==="panic"?13:8));
   }
 
   pointer(event) {
@@ -191,9 +212,9 @@ export class RatRunGame {
         const earned = r.value + Math.min(this.combo,12)*2;
         this.score += earned;
         r.squash = 1;
-        this.burst(r.x,r.y,r.value===50?"#ffe66d":"#f6e4c3",r.value===50?28:16);
+        this.burst(r.x,r.y,r.value===50?"#ffe66d":"#f6e4c3",r.value===50?36:22);
         this.floaters.push({x:r.x,y:r.y-r.radius,text:`+${earned}`,life:.9,big:r.value===50});
-        this.shake = Math.max(this.shake,r.value===50?13:this.combo>=10?7:2);
+        this.shake = Math.max(this.shake,r.value===50?15:this.combo>=10?9:3.5);
         ratHitSound(this.combo);
         if (r.value===50) this.hooks.onAnnouncement?.("GOLDEN RAT!");
         else if (this.combo===10) this.hooks.onAnnouncement?.("RAT MANIA!");
@@ -217,7 +238,7 @@ export class RatRunGame {
   roadEdges(y) {
     const horizonY=this.height*.29, bottomY=this.height*1.04;
     const t=Math.max(0,Math.min(1,(y-horizonY)/(bottomY-horizonY)));
-    const half=this.width*(.10 + t*.40);
+    const half=this.width*(.145 + t*.405);
     return {left:this.width*.5-half,right:this.width*.5+half,t};
   }
 
@@ -232,8 +253,12 @@ export class RatRunGame {
 
     // SKY — stable background.
     const sky=c.createLinearGradient(0,0,0,h*.48);
-    sky.addColorStop(0,"#547eaa");sky.addColorStop(.65,"#a6bdd0");sky.addColorStop(1,"#d7b58c");
+    sky.addColorStop(0,"#527fae");sky.addColorStop(.58,"#a7c0d3");sky.addColorStop(1,"#edbc82");
     c.fillStyle=sky;c.fillRect(0,0,w,h);
+    const haze=c.createLinearGradient(0,h*.17,0,h*.43);
+    haze.addColorStop(0,"rgba(255,210,158,0)");
+    haze.addColorStop(1,"rgba(255,210,158,.28)");
+    c.fillStyle=haze;c.fillRect(0,h*.16,w,h*.30);
 
     // FAR SKYLINE — slowest parallax layer.
     const skylineDrift=(this.worldScroll*.025)%(w/15);
@@ -245,6 +270,21 @@ export class RatRunGame {
     c.fillStyle="#2f465b";
     c.fillRect(w*.11-skylineDrift*.35,h*.13,22,h*.14);
     c.fillRect(w*.105-skylineDrift*.35,h*.12,32,8);
+
+    // Baltimore-flavored rooftop silhouettes.
+    c.fillStyle="#33495d";
+    // church steeple
+    c.beginPath();c.moveTo(w*.82,h*.25);c.lineTo(w*.835,h*.12);c.lineTo(w*.85,h*.25);c.closePath();c.fill();
+    c.fillRect(w*.828,h*.20,w*.014,h*.07);
+    // water tank
+    c.fillRect(w*.63,h*.205,w*.045,h*.045);
+    c.fillRect(w*.635,h*.195,w*.035,h*.012);
+    c.fillRect(w*.639,h*.25,3,h*.035);c.fillRect(w*.667,h*.25,3,h*.035);
+    // rooftop sign
+    c.strokeStyle="#31485c";c.lineWidth=3;
+    c.strokeRect(w*.29,h*.185,w*.09,h*.04);
+    c.fillStyle="#f7d070";c.font=`900 ${Math.max(10,w*.012)}px system-ui`;c.textAlign="center";
+    c.fillText("CHARM CITY",w*.335,h*.213);
 
     // BACKGROUND ROWHOUSES — slow parallax, visually anchored.
     const houseTop=h*.18,houseBottom=h*.42;
@@ -323,6 +363,41 @@ export class RatRunGame {
       c.fillRect(x,y,1+edge.t*3,1+edge.t*2);
     }
 
+    // Road details move with the street and establish scale.
+    for(let i=0;i<7;i++){
+      const phase=((i/7 + this.worldScroll*.00055)%1);
+      const y=h*(.36+phase*.60);
+      const edge=this.roadEdges(y);
+      const t=edge.t;
+      const laneSide=i%2?-1:1;
+      const x=w*.5 + laneSide*(edge.right-edge.left)*(.20 + (i%3)*.08);
+      c.save();c.translate(x,y);c.scale(.35+t*.95,.35+t*.95);
+      if(i%3===0){
+        c.fillStyle="rgba(12,15,18,.62)";c.beginPath();c.ellipse(0,0,18,7,0,0,Math.PI*2);c.fill();
+        c.strokeStyle="rgba(145,155,160,.42)";c.lineWidth=2;c.stroke();
+        c.beginPath();c.moveTo(-11,0);c.lineTo(11,0);c.moveTo(0,-5);c.lineTo(0,5);c.stroke();
+      }else if(i%3===1){
+        c.strokeStyle="rgba(12,15,18,.42)";c.lineWidth=2;
+        c.beginPath();c.moveTo(-18,-2);c.lineTo(-7,4);c.lineTo(3,-3);c.lineTo(18,2);c.stroke();
+      }else{
+        c.fillStyle="rgba(225,220,202,.32)";c.fillRect(-7,-2,14,4);
+      }
+      c.restore();
+    }
+
+    // Storm drains stay beside the curb.
+    for(let i=0;i<5;i++){
+      const phase=((i/5 + this.worldScroll*.00046)%1);
+      const y=h*(.39+phase*.57);
+      const edge=this.roadEdges(y),t=edge.t,side=i%2?-1:1;
+      const x=side<0?edge.left+8+18*t:edge.right-8-18*t;
+      c.save();c.translate(x,y);c.scale(.35+t*.9,.35+t*.9);
+      c.fillStyle="rgba(20,24,27,.78)";c.fillRect(-12,-4,24,8);
+      c.strokeStyle="rgba(120,128,132,.5)";c.lineWidth=1;
+      for(let k=-8;k<=8;k+=4){c.beginPath();c.moveTo(k,-3);c.lineTo(k,3);c.stroke();}
+      c.restore();
+    }
+
     // Perspective lane markings move and grow as they approach.
     c.strokeStyle="#d8c86a";c.lineCap="round";
     const dashCycle=92;
@@ -355,6 +430,29 @@ export class RatRunGame {
       c.restore();
     }
 
+    // Small lived-in sidewalk details.
+    for(let i=0;i<9;i++){
+      const phase=((i/9 + this.worldScroll*.00043)%1);
+      const y=h*(.36+phase*.61);
+      const edge=this.roadEdges(y),t=edge.t,side=i%2?-1:1;
+      const x=side<0?edge.left-(42+38*t):edge.right+(42+38*t);
+      c.save();c.translate(x,y);c.scale(.32+t*.82,.32+t*.82);
+      if(i%4===0){
+        c.fillStyle="rgba(45,48,50,.55)";c.beginPath();c.arc(0,0,10,0,Math.PI*2);c.fill();
+        c.strokeStyle="rgba(165,160,150,.5)";c.stroke();
+      }else if(i%4===1){
+        c.fillStyle="#ded7c7";c.rotate(-.12);c.fillRect(-10,-5,20,10);
+        c.fillStyle="#bd4c43";c.fillRect(-8,-3,9,2);
+      }else if(i%4===2){
+        c.fillStyle="#242426";c.beginPath();c.ellipse(0,0,12,9,0,0,Math.PI*2);c.fill();
+        c.fillStyle="rgba(255,255,255,.12)";c.beginPath();c.arc(-3,-3,4,0,Math.PI*2);c.fill();
+      }else{
+        c.strokeStyle="#282b2f";c.lineWidth=4;c.beginPath();c.moveTo(0,7);c.lineTo(0,-24);c.stroke();
+        c.fillStyle="#58616a";c.beginPath();c.roundRect(-7,-34,14,15,4);c.fill();
+      }
+      c.restore();
+    }
+
     // Rats and effects sorted by depth.
     const sorted=[...this.rats].sort((a,b)=>a.y-b.y);
     for(const r of sorted) this.drawRat(r);
@@ -374,7 +472,7 @@ export class RatRunGame {
 
   drawRat(r) {
     const c=this.ctx;
-    c.save();c.translate(r.x,r.y);c.scale(r.dir,1);
+    c.save();c.translate(r.x,r.y);c.rotate(r.turn||0);c.scale(r.dir,1);
     const stride=Math.sin(r.gait),bob=Math.abs(Math.sin(r.gait))*2.2*r.depth;
     c.translate(0,-bob);
     const gold=r.value===50;
@@ -394,7 +492,7 @@ export class RatRunGame {
     // Body/head.
     c.fillStyle=gold?"#e7b92d":"#655e5b";
     c.beginPath();c.ellipse(0,0,r.radius*1.02,r.radius*.66,-.04,0,Math.PI*2);c.fill();
-    c.beginPath();c.ellipse(r.radius*.72,-r.radius*.15,r.radius*.55,r.radius*.47,0,0,Math.PI*2);c.fill();
+    c.beginPath();c.ellipse(r.radius*.72,-r.radius*.15 + Math.sin(r.look)*r.radius*.035,r.radius*.55,r.radius*.47,0,0,Math.PI*2);c.fill();
 
     // Ear, eye, nose.
     c.fillStyle=gold?"#f6dc77":"#d39a95";c.beginPath();c.arc(r.radius*.58,-r.radius*.52,r.radius*.19,0,Math.PI*2);c.fill();

@@ -41,3 +41,16 @@ DEPTH PROTOTYPE 1.1 — MOVING STREET
 - Trees and street furniture use stronger parallax.
 - Buildings and skyline move more slowly.
 - Rat movement and global leaderboard remain unchanged.
+
+
+VERSION 1.2 — THE LIVING CITY
+- Widened the perspective road and reduced empty sidewalk dominance.
+- Increased the normal rat population to 6–11.
+- Added rat panic sprints, lane changes, head movement and sharper weaving.
+- Added warm horizon haze and deeper curb shadows.
+- Added Baltimore-flavored skyline silhouettes and a Charm City rooftop sign.
+- Added moving manholes, storm drains, cracks, utility covers, newspapers,
+  parking meters, litter and trash bags.
+- Strengthened click particles and screen shake.
+- Added a random humorous news headline at the start of every round.
+- Kept the modular architecture and global leaderboard unchanged.

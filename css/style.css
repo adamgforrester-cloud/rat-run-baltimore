@@ -130,3 +130,30 @@ li { padding: 5px 3px; font-weight: 800; }
 li span { float: right; color: #f3d474; }
 .result { min-height: 20px; color: #ffe19a; font-weight: 900; }
 .build { margin: 18px 0 0; opacity: .45; font-size: 11px; }
+
+#headline {
+  position: fixed;
+  left: 50%;
+  top: 26%;
+  transform: translate(-50%,-50%) scale(.86);
+  z-index: 23;
+  width: min(86vw, 760px);
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(7,12,21,.88);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff1b5;
+  font-weight: 1000;
+  font-size: clamp(20px,4.5vw,46px);
+  letter-spacing: .025em;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 4px 12px #000;
+}
+#headline.show { animation: headlineFlash 1.55s ease-out; }
+@keyframes headlineFlash {
+  0% { opacity: 0; transform: translate(-50%,-36%) scale(.78); }
+  16%,72% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%,-67%) scale(.95); }
+}

@@ -9,6 +9,7 @@ const timeEl = document.getElementById("time");
 const comboEl = document.getElementById("combo");
 const countdownEl = document.getElementById("countdown");
 const announcementEl = document.getElementById("announcement");
+const headlineEl = document.getElementById("headline");
 const statusEl = document.getElementById("onlineStatus");
 const listEl = document.getElementById("leaderboard");
 const resultEl = document.getElementById("resultText");
@@ -56,6 +57,23 @@ async function refreshLeaderboard() {
   }
 }
 
+
+const HEADLINES = [
+  "CITY DECLARES RAT EMERGENCY",
+  "MAYOR DENIES RAT PROBLEM",
+  "RODENT POPULATION UP 327%",
+  "CHEESE TRUCK OVERTURNED DOWNTOWN",
+  "CHARLES STREET OVERRUN",
+  "HEALTH DEPARTMENT: PLEASE STOP FEEDING THEM"
+];
+
+function showHeadline() {
+  headlineEl.textContent = `📰 ${HEADLINES[Math.floor(Math.random()*HEADLINES.length)]}`;
+  headlineEl.classList.remove("show");
+  void headlineEl.offsetWidth;
+  headlineEl.classList.add("show");
+}
+
 function announce(text) {
   announcementEl.textContent=text;
   announcementEl.classList.remove("show");
@@ -97,7 +115,8 @@ const game = new RatRunGame(canvas, {
 startButton.addEventListener("click", () => {
   resultEl.textContent="";
   overlay.classList.remove("show");
-  game.start();
+  showHeadline();
+  setTimeout(() => game.start(), 620);
 });
 
 refreshButton.addEventListener("click", refreshLeaderboard);
