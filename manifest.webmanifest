@@ -1,7 +1,7 @@
 {
-  "name": "Rat Run: Baltimore 2.0",
-  "short_name": "Rat Run 2.0",
-  "description": "Stability release with a hardened 30-second clicker and shared global leaderboard.",
+  "name": "Rat Run: Baltimore 2.1",
+  "short_name": "Rat Run 2.1",
+  "description": "Actors Return update with corrected street layers, Public Risk police, Street Ghoul, Sewer Gator and global competition.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#090b10",

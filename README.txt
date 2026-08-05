@@ -153,3 +153,16 @@ VERSION 2.0 — STABILITY RELEASE
 - Experimental actors paused until they can be reintroduced individually.
 - Debug mode: add ?debug=1 to the game URL.
 - Frame errors are recovered without ending the round.
+
+
+VERSION 2.1 — ACTORS RETURN + STREET LAYERS
+- Core game and global leaderboard retained.
+- Graphics layering corrected.
+- Props stay on sidewalks.
+- Traffic stays on the roadway.
+- Pedestrians and dogs restored.
+- Public Risk and police restored.
+- Five-hit Street Ghoul restored.
+- Sewer Gator and Gator-Aid restored.
+- Screen shake restored for major events.
+- Actor systems are isolated so they cannot crash the full game loop.
