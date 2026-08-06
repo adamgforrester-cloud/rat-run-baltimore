@@ -555,30 +555,30 @@ export class RatRunGame {
   drawStreetArt(c,w,h) {
     const progress=this.running ? Math.min(1,this.elapsed/this.duration) : 0;
     const pulse=this.running ? Math.sin(this.worldScroll*.0022)*.004 : 0;
-    const cameraPush=progress*.205;
     const districtPosition=this.running ? Math.min(2,this.elapsed/10) : 0;
     const baseIndex=Math.min(2,Math.floor(districtPosition));
     const nextIndex=Math.min(2,baseIndex+1);
     const fraction=districtPosition-baseIndex;
-    const rawMix=baseIndex===2 ? 0 : Math.max(0,Math.min(1,(fraction-.78)/.22));
+    const cameraPush=progress*.07+fraction*.09;
+    const rawMix=baseIndex===2 ? 0 : Math.max(0,Math.min(1,(fraction-.72)/.28));
     const mix=rawMix*rawMix*(3-2*rawMix);
-    const drawLayer=(image,alpha,index) => {
+    const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
       if(alpha<=0)return;
       const calibration=this.streetCalibrations[index];
       const cover=Math.max(w/image.naturalWidth,h/image.naturalHeight);
-      const scale=cover*(1.018+cameraPush+pulse)*calibration.zoom;
+      const scale=cover*(1.018+cameraPush+pulse+scaleShift)*calibration.zoom;
       const drawW=image.naturalWidth*scale;
       const drawH=image.naturalHeight*scale;
       const sideDrift=this.running ? Math.sin(this.elapsed*.42)*w*.009*progress : 0;
       const horizonX=.5;
       const horizonY=.205;
       const drawX=w*horizonX-image.naturalWidth*horizonX*scale+sideDrift+w*calibration.offsetX;
-      const drawY=h*horizonY-image.naturalHeight*horizonY*scale+h*calibration.offsetY;
+      const drawY=h*horizonY-image.naturalHeight*horizonY*scale+h*calibration.offsetY+h*rise;
       c.globalAlpha=alpha;
       c.drawImage(image,drawX,drawY,drawW,drawH);
     };
-    drawLayer(this.streetArts[baseIndex],1,baseIndex);
-    drawLayer(this.streetArts[nextIndex],mix,nextIndex);
+    drawLayer(this.streetArts[baseIndex],1,baseIndex,mix*.035,0);
+    drawLayer(this.streetArts[nextIndex],mix,nextIndex,-cameraPush*(1-mix),-.018*(1-mix));
     c.globalAlpha=1;
 
     const depthShade=c.createLinearGradient(0,0,0,h);
@@ -587,7 +587,33 @@ export class RatRunGame {
     depthShade.addColorStop(1,"rgba(3,6,10,.25)");
     c.fillStyle=depthShade;c.fillRect(0,0,w,h);
 
-    if (this.running) this.drawStreetMotion(c,w,h,progress);
+    if (this.running) {
+      this.drawStreetMotion(c,w,h,progress);
+      if (mix>0 && mix<1) this.drawDistrictTransition(c,w,h,mix);
+    }
+  }
+
+  drawDistrictTransition(c,w,h,mix) {
+    const energy=Math.sin(mix*Math.PI);
+    const horizonY=h*.29;
+    const glow=c.createRadialGradient(w*.5,horizonY,0,w*.5,horizonY,w*.52);
+    glow.addColorStop(0,`rgba(255,226,174,${energy*.20})`);
+    glow.addColorStop(.30,`rgba(255,210,146,${energy*.07})`);
+    glow.addColorStop(1,"rgba(255,210,146,0)");
+    c.fillStyle=glow;c.fillRect(0,0,w,h);
+
+    c.strokeStyle=`rgba(255,239,208,${energy*.18})`;
+    c.lineCap="round";
+    for(let i=0;i<12;i++){
+      const side=i%2?-1:1;
+      const spread=.07+Math.floor(i/2)*.075;
+      const startY=h*(.33+((i*17)%31)/100);
+      const endY=startY+h*(.10+mix*.13);
+      const startX=w*.5+side*w*spread*(startY/h);
+      const endX=w*.5+(startX-w*.5)*1.45;
+      c.lineWidth=1+energy*3;
+      c.beginPath();c.moveTo(startX,startY);c.lineTo(endX,endY);c.stroke();
+    }
   }
 
   drawStreetMotion(c,w,h,progress) {
