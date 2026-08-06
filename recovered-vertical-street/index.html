@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101b2d">
+  <title>Rat Run: Baltimore — Vertical Street</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" aria-label="Rat Run Baltimore game"></canvas>
+
+    <section id="hud" aria-live="polite">
+      <div class="hud-pill"><span>SCORE</span><strong id="score">0</strong></div>
+      <div class="hud-pill"><span>TIME</span><strong id="time">30</strong></div>
+      <div class="hud-pill"><span>COMBO</span><strong id="combo">0×</strong></div>
+    </section>
+
+    <div id="headline"></div><div id="countdown"></div>
+    <div id="announcement"></div>
+    <div id="district"></div>
+
+    <section id="overlay" class="show">
+      <div class="panel">
+        <p class="eyebrow">ADAM GALAXY STUDIOS</p>
+        <h1>RAT RUN:<br><em>BALTIMORE</em></h1>
+        <p class="tagline">Tap fast. Build combos. Own the streets of Baltimore.</p>
+
+        <label class="name-label">
+          Player name
+          <input id="playerName" maxlength="12" autocomplete="nickname" value="MAYOROFRATS">
+        </label>
+
+        <div id="onlineStatus" class="status checking">Checking global leaderboard…</div>
+        <button id="startButton">START 30-SECOND RUN</button>
+        <button id="refreshButton" class="secondary">REFRESH SCORES</button>
+
+        <div class="leaderboard-wrap">
+          <h2>DOMINO SUGARS — GLOBAL TOP 10</h2>
+          <ol id="leaderboard"></ol>
+        </div>
+
+        <p id="resultText" class="result"></p>
+        <p class="build">Science Center Waterfront • Local milestone</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
