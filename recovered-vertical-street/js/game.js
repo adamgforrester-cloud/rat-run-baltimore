@@ -36,6 +36,13 @@ export class RatRunGame {
       image.src=src;
       return image;
     });
+    // Each generated scene places its road at a slightly different point.
+    // Small offsets keep the full artwork visible while joining the road centers.
+    this.streetCalibrations = [
+      { offsetX: 0, offsetY: 0, zoom: 1 },
+      { offsetX: 0, offsetY: 0, zoom: 1 },
+      { offsetX: .045, offsetY: .12, zoom: 1.05 }
+    ];
     this.streetArt = this.streetArts[0];
     this.resize();
     addEventListener("resize", () => this.resize());
@@ -555,22 +562,23 @@ export class RatRunGame {
     const fraction=districtPosition-baseIndex;
     const rawMix=baseIndex===2 ? 0 : Math.max(0,Math.min(1,(fraction-.78)/.22));
     const mix=rawMix*rawMix*(3-2*rawMix);
-    const drawLayer=(image,alpha) => {
+    const drawLayer=(image,alpha,index) => {
       if(alpha<=0)return;
+      const calibration=this.streetCalibrations[index];
       const cover=Math.max(w/image.naturalWidth,h/image.naturalHeight);
-      const scale=cover*(1.018+cameraPush+pulse);
+      const scale=cover*(1.018+cameraPush+pulse)*calibration.zoom;
       const drawW=image.naturalWidth*scale;
       const drawH=image.naturalHeight*scale;
+      const sideDrift=this.running ? Math.sin(this.elapsed*.42)*w*.009*progress : 0;
       const horizonX=.5;
       const horizonY=.205;
-      const sideDrift=this.running ? Math.sin(this.elapsed*.42)*w*.009*progress : 0;
-      const drawX=w*horizonX-image.naturalWidth*horizonX*scale+sideDrift;
-      const drawY=h*horizonY-image.naturalHeight*horizonY*scale;
+      const drawX=w*horizonX-image.naturalWidth*horizonX*scale+sideDrift+w*calibration.offsetX;
+      const drawY=h*horizonY-image.naturalHeight*horizonY*scale+h*calibration.offsetY;
       c.globalAlpha=alpha;
       c.drawImage(image,drawX,drawY,drawW,drawH);
     };
-    drawLayer(this.streetArts[baseIndex],1);
-    drawLayer(this.streetArts[nextIndex],mix);
+    drawLayer(this.streetArts[baseIndex],1,baseIndex);
+    drawLayer(this.streetArts[nextIndex],mix,nextIndex);
     c.globalAlpha=1;
 
     const depthShade=c.createLinearGradient(0,0,0,h);

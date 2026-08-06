@@ -61,7 +61,7 @@ async function refreshLeaderboard() {
 
 
 const HEADLINES = [
-  "CITY DECLARES RAT EMERGENCY",
+  "CITY DECLARES RAT PROBLEM",
   "MAYOR DENIES RAT PROBLEM",
   "RODENT POPULATION UP 327%",
   "CHEESE TRUCK OVERTURNED DOWNTOWN",
@@ -69,8 +69,12 @@ const HEADLINES = [
   "HEALTH DEPARTMENT: PLEASE STOP FEEDING THEM"
 ];
 
+let headlineIndex = Number(sessionStorage.getItem("ratRunHeadlineIndex") || 0);
+
 function showHeadline() {
-  headlineEl.textContent = `📰 ${HEADLINES[Math.floor(Math.random()*HEADLINES.length)]}`;
+  headlineEl.textContent = `📰 ${HEADLINES[headlineIndex % HEADLINES.length]}`;
+  headlineIndex += 1;
+  sessionStorage.setItem("ratRunHeadlineIndex", String(headlineIndex));
   headlineEl.classList.remove("show");
   void headlineEl.offsetWidth;
   headlineEl.classList.add("show");
