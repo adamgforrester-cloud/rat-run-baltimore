@@ -43,6 +43,13 @@ export class RatRunGame {
       { offsetX: 0, offsetY: 0, zoom: 1 },
       { offsetX: .045, offsetY: .12, zoom: 1.05 }
     ];
+    // Each painted district has different road geometry. These normalized
+    // trapezoids keep rats inside the playable pavement in that artwork.
+    this.roadZones = [
+      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .11, halfBottom: .43, spawnMin: .48 },
+      { horizon: .69, bottom: 1.02, centerTop: .58, centerBottom: .52, halfTop: .015, halfBottom: .22, spawnMin: .78 },
+      { horizon: .69, bottom: 1.02, centerTop: .52, centerBottom: .49, halfTop: .015, halfBottom: .18, spawnMin: .78 }
+    ];
     this.streetArt = this.streetArts[0];
     this.resize();
     addEventListener("resize", () => this.resize());
@@ -112,7 +119,18 @@ export class RatRunGame {
     const remaining = Math.max(0, this.duration-this.elapsed);
     const district=Math.min(2,Math.floor(this.elapsed/10));
     if (district!==this.districtIndex) {
+      const previousDistrict=this.districtIndex;
       this.districtIndex=district;
+      if(previousDistrict>=0){
+        const zone=this.roadZones[district];
+        for(const rat of this.rats){
+          rat.baseY=Math.max(this.height*zone.spawnMin,Math.min(this.height*.94,rat.baseY));
+          rat.laneGoal=Math.max(this.height*zone.spawnMin,Math.min(this.height*.94,rat.laneGoal));
+          rat.y=Math.max(this.height*zone.spawnMin,Math.min(this.height*.95,rat.y));
+          const bounds=this.roadEdges(rat.y,district);
+          rat.x=Math.max(bounds.left+rat.radius,Math.min(bounds.right-rat.radius,rat.x));
+        }
+      }
       this.hooks.onDistrict?.(district,["THE ROWHOUSES","DOWNTOWN","INNER HARBOR"][district]);
     }
     this.hooks.onTime?.(Math.ceil(remaining));
@@ -161,13 +179,14 @@ export class RatRunGame {
   spawnRat() {
     const fromLeft = Math.random() < .72 ? this.lastSpawnSide > 0 : Math.random() < .5;
     this.lastSpawnSide = fromLeft ? -1 : 1;
-    const horizon = this.height*.31;
-    const roadBottom = this.height*.98;
-    let y = horizon + (roadBottom-horizon)*(.40+Math.random()*.52);
+    const zone=this.roadZones[Math.max(0,this.districtIndex)];
+    const horizon = this.height*zone.horizon;
+    const roadBottom = this.height*zone.bottom;
+    let y = this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
     for (let attempt=0; attempt<6; attempt++) {
       const crowded=this.rats.some(r => r.dir===(fromLeft?1:-1) && Math.abs(r.y-y)<Math.max(46,r.radius*3));
       if (!crowded) break;
-      y = horizon + (roadBottom-horizon)*(.40+Math.random()*.52);
+      y = this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
     }
     const depth = (y-horizon)/(roadBottom-horizon);
     const radius = 10 + depth*14;
@@ -182,7 +201,7 @@ export class RatRunGame {
       {body:"#8b7b68",dark:"#66594a",belly:"#ad9b82",ear:"#dda69d",tail:"#b78d83"}
     ];
     this.rats.push({
-      x: fromLeft ? road.left-edgePadding : road.right+edgePadding,
+      x: fromLeft ? road.left+edgePadding : road.right-edgePadding,
       y,
       baseY:y,
       vx:(fromLeft?1:-1)*speed,
@@ -218,7 +237,8 @@ export class RatRunGame {
       r.state = "panic";
       r.stateClock = .20 + Math.random()*.28;
       r.panicClock = 1.8 + Math.random()*3.2;
-      r.laneGoal = Math.max(this.height*.44, Math.min(this.height*.93, r.baseY + (Math.random()-.5)*115*r.depth));
+      const zone=this.roadZones[Math.max(0,this.districtIndex)];
+      r.laneGoal = Math.max(this.height*zone.spawnMin, Math.min(this.height*.93, r.baseY + (Math.random()-.5)*90*r.depth));
       r.turn = (Math.random()<.5?-1:1)*.22;
     } else if (r.stateClock <= 0) {
       const roll = Math.random();
@@ -228,7 +248,8 @@ export class RatRunGame {
       } else if (roll < .46) {
         r.state = "weave";
         r.zig *= -1;
-        r.laneGoal = Math.max(this.height*.40, Math.min(this.height*.94, r.baseY + r.zig*(24+Math.random()*52)*r.depth));
+        const zone=this.roadZones[Math.max(0,this.districtIndex)];
+        r.laneGoal = Math.max(this.height*zone.spawnMin, Math.min(this.height*.94, r.baseY + r.zig*(18+Math.random()*38)*r.depth));
         r.turn = r.zig*.12;
         r.stateClock = .24 + Math.random()*.48;
       } else {
@@ -248,9 +269,9 @@ export class RatRunGame {
     const targetY = r.state==="weave" || r.state==="panic" ? r.laneGoal : r.baseY;
     r.y += (targetY + footWobble - r.y)*Math.min(1,dt*(r.state==="panic"?13:8));
     const bounds=this.roadEdges(r.y);
-    const pad=r.radius*.55;
-    if(r.x<bounds.left-pad && r.dir<0) r.x=bounds.left-pad;
-    if(r.x>bounds.right+pad && r.dir>0) r.x=bounds.right+pad;
+    const pad=r.radius*.72;
+    if(r.dir>0 && r.x>=bounds.right-pad) r.life=0;
+    if(r.dir<0 && r.x<=bounds.left+pad) r.life=0;
   }
 
   pointer(event) {
@@ -294,11 +315,13 @@ export class RatRunGame {
     }
   }
 
-  roadEdges(y) {
-    const horizonY=this.height*.29, bottomY=this.height*1.04;
+  roadEdges(y,district=this.districtIndex) {
+    const zone=this.roadZones[Math.max(0,Math.min(2,district))];
+    const horizonY=this.height*zone.horizon, bottomY=this.height*zone.bottom;
     const t=Math.max(0,Math.min(1,(y-horizonY)/(bottomY-horizonY)));
-    const half=this.width*(.125 + t*.43);
-    return {left:this.width*.5-half,right:this.width*.5+half,t};
+    const center=this.width*(zone.centerTop+(zone.centerBottom-zone.centerTop)*t);
+    const half=this.width*(zone.halfTop+(zone.halfBottom-zone.halfTop)*t);
+    return {left:center-half,right:center+half,t};
   }
 
   drawStaticPreview() {
@@ -616,18 +639,10 @@ export class RatRunGame {
     shade.addColorStop(1,`rgba(2,5,9,${cover})`);
     c.fillStyle=shade;c.fillRect(0,0,w,h);
 
-    c.strokeStyle=`rgba(255,224,171,${energy*.44})`;
-    c.lineCap="round";
-    for(let i=0;i<18;i++){
-      const side=i%2?-1:1;
-      const spread=.035+Math.floor(i/2)*.048;
-      const startY=h*(.31+((i*13)%27)/100);
-      const endY=startY+h*(.12+energy*.20);
-      const startX=w*.5+side*w*spread*(startY/h);
-      const endX=w*.5+(startX-w*.5)*(1.55+energy*.35);
-      c.lineWidth=1+energy*5;
-      c.beginPath();c.moveTo(startX,startY);c.lineTo(endX,endY);c.stroke();
-    }
+    const softGlow=c.createRadialGradient(w*.5,h*.43,0,w*.5,h*.43,w*.32);
+    softGlow.addColorStop(0,`rgba(255,224,171,${energy*.10})`);
+    softGlow.addColorStop(1,"rgba(255,224,171,0)");
+    c.fillStyle=softGlow;c.fillRect(0,0,w,h);
 
     const titleIn=Math.max(0,Math.min(1,(phase-.24)/.16));
     const titleOut=Math.max(0,Math.min(1,(.82-phase)/.16));

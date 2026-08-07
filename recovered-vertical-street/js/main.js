@@ -114,6 +114,7 @@ const game = new RatRunGame(canvas, {
   onDistrict(index,name) {
     districtEl.textContent=`BLOCK ${index+1}  •  ${name}`;
     districtEl.classList.remove("show");
+    if(index>0) return;
     void districtEl.offsetWidth;
     districtEl.classList.add("show");
     window.setTimeout(()=>districtEl.classList.remove("show"),1700);
