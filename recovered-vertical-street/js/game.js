@@ -313,6 +313,7 @@ export class RatRunGame {
     if (this.streetArts.every(image => image.complete && image.naturalWidth)) {
       this.drawStreetArt(c,w,h);
       this.drawActorsAndEffects(c);
+      if (this.cinematicTransition) this.drawDistrictCard(c,w,h,this.cinematicTransition);
       c.restore();
       return;
     }
@@ -557,11 +558,19 @@ export class RatRunGame {
     const pulse=this.running ? Math.sin(this.worldScroll*.0022)*.004 : 0;
     const districtPosition=this.running ? Math.min(2,this.elapsed/10) : 0;
     const baseIndex=Math.min(2,Math.floor(districtPosition));
-    const nextIndex=Math.min(2,baseIndex+1);
     const fraction=districtPosition-baseIndex;
-    const cameraPush=progress*.07+fraction*.09;
-    const rawMix=baseIndex===2 ? 0 : Math.max(0,Math.min(1,(fraction-.72)/.28));
-    const mix=rawMix*rawMix*(3-2*rawMix);
+    const cameraPush=progress*.055+fraction*.075;
+    const boundary=this.elapsed<10.8 ? 10 : this.elapsed<20.8 ? 20 : null;
+    const transitionDuration=1.35;
+    const transitionStart=boundary===null ? Infinity : boundary-transitionDuration/2;
+    const transitionPhase=boundary===null ? -1 : (this.elapsed-transitionStart)/transitionDuration;
+    const inTransition=this.running && transitionPhase>=0 && transitionPhase<=1;
+    const outgoingIndex=boundary===null ? baseIndex : Math.max(0,boundary/10-1);
+    const incomingIndex=boundary===null ? baseIndex : Math.min(2,boundary/10);
+    const visibleIndex=inTransition ? (transitionPhase<.5 ? outgoingIndex : incomingIndex) : baseIndex;
+    const cameraSurge=inTransition
+      ? (transitionPhase<.5 ? transitionPhase/.5*.075 : (1-transitionPhase)/.5*.025)
+      : 0;
     const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
       if(alpha<=0)return;
       const calibration=this.streetCalibrations[index];
@@ -577,8 +586,8 @@ export class RatRunGame {
       c.globalAlpha=alpha;
       c.drawImage(image,drawX,drawY,drawW,drawH);
     };
-    drawLayer(this.streetArts[baseIndex],1,baseIndex,mix*.035,0);
-    drawLayer(this.streetArts[nextIndex],mix,nextIndex,-cameraPush*(1-mix),-.018*(1-mix));
+    // Never show two roads at once. The cinematic cover hides the hard cut.
+    drawLayer(this.streetArts[visibleIndex],1,visibleIndex,cameraSurge,0);
     c.globalAlpha=1;
 
     const depthShade=c.createLinearGradient(0,0,0,h);
@@ -589,31 +598,49 @@ export class RatRunGame {
 
     if (this.running) {
       this.drawStreetMotion(c,w,h,progress);
-      if (mix>0 && mix<1) this.drawDistrictTransition(c,w,h,mix);
+      this.cinematicTransition=inTransition ? {
+        phase:transitionPhase,
+        title:["THE ROWHOUSES","DOWNTOWN","INNER HARBOR"][incomingIndex]
+      } : null;
+    } else {
+      this.cinematicTransition=null;
     }
   }
 
-  drawDistrictTransition(c,w,h,mix) {
-    const energy=Math.sin(mix*Math.PI);
-    const horizonY=h*.29;
-    const glow=c.createRadialGradient(w*.5,horizonY,0,w*.5,horizonY,w*.52);
-    glow.addColorStop(0,`rgba(255,226,174,${energy*.20})`);
-    glow.addColorStop(.30,`rgba(255,210,146,${energy*.07})`);
-    glow.addColorStop(1,"rgba(255,210,146,0)");
-    c.fillStyle=glow;c.fillRect(0,0,w,h);
+  drawDistrictCard(c,w,h,transition) {
+    const {phase,title}=transition;
+    const energy=Math.sin(phase*Math.PI);
+    const cover=Math.min(.92,energy*1.12);
+    const shade=c.createRadialGradient(w*.5,h*.32,0,w*.5,h*.32,w*.78);
+    shade.addColorStop(0,`rgba(7,12,18,${cover*.55})`);
+    shade.addColorStop(1,`rgba(2,5,9,${cover})`);
+    c.fillStyle=shade;c.fillRect(0,0,w,h);
 
-    c.strokeStyle=`rgba(255,239,208,${energy*.18})`;
+    c.strokeStyle=`rgba(255,224,171,${energy*.44})`;
     c.lineCap="round";
-    for(let i=0;i<12;i++){
+    for(let i=0;i<18;i++){
       const side=i%2?-1:1;
-      const spread=.07+Math.floor(i/2)*.075;
-      const startY=h*(.33+((i*17)%31)/100);
-      const endY=startY+h*(.10+mix*.13);
+      const spread=.035+Math.floor(i/2)*.048;
+      const startY=h*(.31+((i*13)%27)/100);
+      const endY=startY+h*(.12+energy*.20);
       const startX=w*.5+side*w*spread*(startY/h);
-      const endX=w*.5+(startX-w*.5)*1.45;
-      c.lineWidth=1+energy*3;
+      const endX=w*.5+(startX-w*.5)*(1.55+energy*.35);
+      c.lineWidth=1+energy*5;
       c.beginPath();c.moveTo(startX,startY);c.lineTo(endX,endY);c.stroke();
     }
+
+    const titleIn=Math.max(0,Math.min(1,(phase-.24)/.16));
+    const titleOut=Math.max(0,Math.min(1,(.82-phase)/.16));
+    c.globalAlpha=titleIn*titleOut;
+    c.textAlign="center";
+    c.shadowColor="rgba(0,0,0,.9)";c.shadowBlur=18;
+    c.fillStyle="#f7e4bd";
+    c.font=`900 ${Math.max(28,Math.min(58,w*.055))}px system-ui`;
+    c.fillText(title,w*.5,h*.50);
+    c.fillStyle="#dfb75e";
+    c.font=`800 ${Math.max(11,Math.min(17,w*.016))}px system-ui`;
+    c.fillText("BALTIMORE",w*.5,h*.50+34);
+    c.globalAlpha=1;c.shadowBlur=0;
   }
 
   drawStreetMotion(c,w,h,progress) {
