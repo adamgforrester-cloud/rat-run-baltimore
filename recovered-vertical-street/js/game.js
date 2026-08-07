@@ -50,6 +50,7 @@ export class RatRunGame {
       { horizon: .69, bottom: 1.02, centerTop: .58, centerBottom: .52, halfTop: .015, halfBottom: .22, spawnMin: .78 },
       { horizon: .69, bottom: 1.02, centerTop: .52, centerBottom: .49, halfTop: .015, halfBottom: .18, spawnMin: .78 }
     ];
+    this.ratLanes=[.20,.35,.50,.65,.80];
     this.streetArt = this.streetArts[0];
     this.resize();
     addEventListener("resize", () => this.resize());
@@ -156,6 +157,7 @@ export class RatRunGame {
     }
 
     for (const rat of this.rats) this.updateRat(rat,dt);
+    this.separateRats(dt);
     this.rats = this.rats.filter(r => r.life > 0 && r.x > -120 && r.x < this.width+120);
 
     for (const p of this.particles) {
@@ -184,22 +186,30 @@ export class RatRunGame {
     const roadBottom = this.height*zone.bottom;
     const routeRoll=Math.random();
     const motion=routeRoll<.52?"across":routeRoll<.72?"toward":routeRoll<.88?"away":"diagonal";
-    let y=motion==="toward"||motion==="diagonal"
-      ? this.height*(zone.spawnMin+.015)
-      : motion==="away" ? this.height*.94
-      : this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
-    for (let attempt=0; attempt<6; attempt++) {
-      const crowded=this.rats.some(r => Math.abs(r.y-y)<Math.max(42,r.radius*2.6));
-      if (!crowded) break;
-      if(motion==="across") y=this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
-    }
+    const yCandidates=motion==="toward"||motion==="diagonal"
+      ? [zone.spawnMin+.01,zone.spawnMin+.035,zone.spawnMin+.065]
+      : motion==="away" ? [.90,.925,.95]
+      : Array.from({length:8},()=>zone.spawnMin+Math.random()*(.95-zone.spawnMin));
+    const yRatio=yCandidates.reduce((best,candidate)=>{
+      const clearance=this.rats.reduce((nearest,rat)=>Math.min(nearest,Math.abs(rat.y/this.height-candidate)),1);
+      return clearance>best.clearance?{value:candidate,clearance}:best;
+    },{value:yCandidates[0],clearance:-1}).value;
+    let y=this.height*yRatio;
     const depth = Math.max(0,Math.min(1,(y-horizon)/(roadBottom-horizon)));
     const radius = 10 + depth*14;
     const road = this.roadEdges(y);
     const edgePadding = radius*1.4;
     const districtBoost=1+Math.min(2,Math.floor(this.elapsed/10))*.14;
     const speed = (105 + depth*125 + Math.random()*55)*districtBoost;
-    const laneRatio=.24+Math.random()*.52;
+    const shuffledLanes=[...this.ratLanes].sort(()=>Math.random()-.5);
+    const laneRatio=shuffledLanes.reduce((best,candidate)=>{
+      const crowd=this.rats.reduce((score,rat)=>{
+        const laneDistance=Math.abs((rat.laneRatio??.5)-candidate);
+        const depthDistance=Math.abs(rat.y-y)/this.height;
+        return score+Math.max(0,.30-laneDistance)*Math.max(0,.20-depthDistance);
+      },0);
+      return crowd<best.crowd?{value:candidate,crowd}:best;
+    },{value:shuffledLanes[0],crowd:Infinity}).value;
     const verticalDirection=motion==="away"?-1:1;
     const verticalSpeed=(42+Math.random()*42)*districtBoost*verticalDirection;
     const diagonalDirection=Math.random()<.5?-1:1;
@@ -220,7 +230,8 @@ export class RatRunGame {
       motion,
       vy:verticalSpeed,
       laneRatio,
-      laneVelocity:motion==="diagonal"?diagonalDirection*(.18+Math.random()*.12):(Math.random()-.5)*.035,
+      laneVelocity:motion==="diagonal"?diagonalDirection*(.22+Math.random()*.14):(Math.random()-.5)*.025,
+      laneHome:laneRatio,
       radius,
       depth,
       gait:Math.random()*Math.PI*2,
@@ -308,6 +319,31 @@ export class RatRunGame {
     r.baseY=r.y;
     r.laneGoal=r.y;
     if(r.y>=this.height*.955||r.y<=this.height*(zone.spawnMin-.01)) r.life=0;
+  }
+
+  separateRats(dt) {
+    for(let i=0;i<this.rats.length;i++){
+      const a=this.rats[i];
+      if(!a||a.life<=0)continue;
+      for(let j=i+1;j<this.rats.length;j++){
+        const b=this.rats[j];
+        if(!b||b.life<=0)continue;
+        const dx=b.x-a.x,dy=b.y-a.y;
+        const distance=Math.hypot(dx,dy)||.001;
+        const gap=(a.radius+b.radius)*1.28;
+        if(distance>=gap)continue;
+        const push=(gap-distance)*Math.min(1,dt*12)*.58;
+        const nx=dx/distance,ny=dy/distance;
+        a.x-=nx*push;b.x+=nx*push;
+        a.y-=ny*push*.28;b.y+=ny*push*.28;
+        for(const rat of[a,b]){
+          const zone=this.roadZones[Math.max(0,this.districtIndex)];
+          rat.y=Math.max(this.height*zone.spawnMin,Math.min(this.height*.95,rat.y));
+          const bounds=this.roadEdges(rat.y);
+          rat.x=Math.max(bounds.left+rat.radius*.7,Math.min(bounds.right-rat.radius*.7,rat.x));
+        }
+      }
+    }
   }
 
   pointer(event) {

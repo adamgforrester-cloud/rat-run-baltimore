@@ -1,5 +1,5 @@
 
-const CACHE = "rat-run-baltimore-multidirectional-v5";
+const CACHE = "rat-run-baltimore-lane-spacing-v6";
 const FILES = [
   "./",
   "./index.html",
