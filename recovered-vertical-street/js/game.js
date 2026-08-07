@@ -7,7 +7,7 @@ export class RatRunGame {
     this.ctx = canvas.getContext("2d", { alpha: false });
     this.hooks = hooks;
     this.running = false;
-    this.duration = 30;
+    this.duration = 45;
     this.score = 0;
     this.combo = 0;
     this.comboClock = 0;
@@ -16,6 +16,14 @@ export class RatRunGame {
     this.particles = [];
     this.floaters = [];
     this.tapRings = [];
+    this.pickups = [];
+    this.hazards = [];
+    this.powerSpawnClock = 3.2;
+    this.hazardSpawnClock = 6.2;
+    this.nextPowerType = "cheese";
+    this.nextHazardType = "pedestrian";
+    this.effects = { cheese: 0, coffee: 0 };
+    this.mistakes = { pedestrian: 0, dog: 0 };
     this.spawnClock = 0;
     this.minimumRats = 6;
     this.maximumRats = 11;
@@ -79,6 +87,14 @@ export class RatRunGame {
     this.particles = [];
     this.floaters = [];
     this.tapRings = [];
+    this.pickups = [];
+    this.hazards = [];
+    this.powerSpawnClock = 3.2;
+    this.hazardSpawnClock = 6.2;
+    this.nextPowerType = "cheese";
+    this.nextHazardType = "pedestrian";
+    this.effects = { cheese: 0, coffee: 0 };
+    this.mistakes = { pedestrian: 0, dog: 0 };
     this.spawnClock = .15;
     this.shake = 0;
     this.lastCountdown = null;
@@ -88,7 +104,7 @@ export class RatRunGame {
     this.last = performance.now();
     startSound();
     this.hooks.onScore?.(0,0);
-    this.hooks.onTime?.(30);
+    this.hooks.onTime?.(45);
     requestAnimationFrame(t => this.loop(t));
   }
 
@@ -118,7 +134,7 @@ export class RatRunGame {
     this.elapsed += dt;
     this.worldScroll += dt*(155 + this.elapsed*2.2);
     const remaining = Math.max(0, this.duration-this.elapsed);
-    const district=Math.min(2,Math.floor(this.elapsed/10));
+    const district=Math.min(2,Math.floor(this.elapsed/15));
     if (district!==this.districtIndex) {
       const previousDistrict=this.districtIndex;
       this.districtIndex=district;
@@ -142,6 +158,33 @@ export class RatRunGame {
       this.hooks.onCountdown?.(n);
     }
     if (remaining <= 0) return this.stop();
+
+    this.effects.cheese=Math.max(0,this.effects.cheese-dt);
+    this.effects.coffee=Math.max(0,this.effects.coffee-dt);
+    this.mistakes.pedestrian=Math.max(0,this.mistakes.pedestrian-dt);
+    this.mistakes.dog=Math.max(0,this.mistakes.dog-dt);
+
+    this.powerSpawnClock-=dt;
+    if(this.powerSpawnClock<=0 && this.pickups.length<2){
+      this.spawnStreetItem("power",this.nextPowerType);
+      this.nextPowerType=this.nextPowerType==="cheese"?"coffee":"cheese";
+      this.powerSpawnClock=4.0;
+    }
+    this.hazardSpawnClock-=dt;
+    if(this.hazardSpawnClock<=0 && this.hazards.length<2){
+      this.spawnStreetItem("hazard",this.nextHazardType);
+      this.nextHazardType=this.nextHazardType==="pedestrian"?"dog":"pedestrian";
+      this.hazardSpawnClock=3.8;
+    }
+    for(const item of [...this.pickups,...this.hazards]){
+      item.life-=dt;
+      item.bob+=dt*4;
+      item.y+=dt*(7+item.depth*8);
+      const bounds=this.roadEdges(item.y);
+      item.x=bounds.left+(bounds.right-bounds.left)*item.laneRatio;
+    }
+    this.pickups=this.pickups.filter(item=>item.life>0&&item.y<this.height*.96);
+    this.hazards=this.hazards.filter(item=>item.life>0&&item.y<this.height*.96);
 
     this.comboClock -= dt;
     if (this.comboClock <= 0 && this.combo) {
@@ -199,7 +242,7 @@ export class RatRunGame {
     const radius = this.ratRadius(depth,Math.max(0,this.districtIndex));
     const road = this.roadEdges(y);
     const edgePadding = radius*1.4;
-    const districtBoost=1+Math.min(2,Math.floor(this.elapsed/10))*.14;
+    const districtBoost=1+Math.min(2,Math.floor(this.elapsed/15))*.14;
     const speed = (105 + depth*125 + Math.random()*55)*districtBoost;
     const shuffledLanes=[...this.ratLanes].sort(()=>Math.random()-.5);
     const laneRatio=shuffledLanes.reduce((best,candidate)=>{
@@ -288,10 +331,10 @@ export class RatRunGame {
       }
     }
 
-    const speedScale =
+    const speedScale = (this.effects.cheese>0 ? .04 : 1) * (
       r.state==="pause" ? .10 :
       r.state==="panic" ? 1.62 :
-      r.state==="dash" ? 1.08 : .82;
+      r.state==="dash" ? 1.08 : .82);
 
     if(r.motion==="across"){
       r.x += r.vx*speedScale*dt;
@@ -354,13 +397,31 @@ export class RatRunGame {
     const x = (event.clientX-rect.left)*(this.width/rect.width);
     const y = (event.clientY-rect.top)*(this.height/rect.height);
 
+    for(let i=this.pickups.length-1;i>=0;i--){
+      const item=this.pickups[i];
+      if(Math.hypot(x-item.x,y-item.y)<Math.max(34,item.radius*1.7)){
+        this.pickups.splice(i,1);
+        this.activatePower(item);
+        return;
+      }
+    }
+    for(let i=this.hazards.length-1;i>=0;i--){
+      const item=this.hazards[i];
+      if(Math.hypot(x-item.x,y-item.y)<Math.max(38,item.radius*1.7)){
+        this.hazards.splice(i,1);
+        this.hitHazard(item);
+        return;
+      }
+    }
+
     for (let i=this.rats.length-1;i>=0;i--) {
       const r = this.rats[i];
       if (Math.hypot(x-r.x,y-r.y) < Math.max(28,r.radius*2.05)) {
         this.rats.splice(i,1);
         this.combo += 1;
         this.comboClock = 1.15;
-        const earned = r.value + Math.min(this.combo,12)*2;
+        const multiplier=this.effects.cheese>0&&this.effects.coffee>0 ? 3 : this.effects.coffee>0 ? 2 : 1;
+        const earned = (r.value + Math.min(this.combo,12)*2)*multiplier;
         this.score += earned;
         r.squash = 1;
         this.burst(r.x,r.y,r.value===50?"#ffe66d":"#f6e4c3",r.value===50?36:22);
@@ -396,6 +457,41 @@ export class RatRunGame {
     const center=this.width*(zone.centerTop+(zone.centerBottom-zone.centerTop)*t);
     const half=this.width*(zone.halfTop+(zone.halfBottom-zone.halfTop)*t);
     return {left:center-half,right:center+half,t};
+  }
+
+  spawnStreetItem(kind,type) {
+    const zone=this.roadZones[Math.max(0,this.districtIndex)];
+    const y=this.height*(zone.spawnMin+.04+Math.random()*.10);
+    const bounds=this.roadEdges(y);
+    const laneRatio=.25+Math.random()*.50;
+    const depth=bounds.t;
+    const item={kind,type,y,x:bounds.left+(bounds.right-bounds.left)*laneRatio,laneRatio,depth,radius:18+depth*7,life:7.5,bob:Math.random()*Math.PI*2};
+    (kind==="power"?this.pickups:this.hazards).push(item);
+  }
+
+  activatePower(item) {
+    this.effects[item.type]=Math.max(this.effects[item.type],5.5);
+    const stacked=this.effects.cheese>0&&this.effects.coffee>0;
+    const points=stacked?75:25;
+    this.score+=points;
+    this.burst(item.x,item.y,item.type==="cheese"?"#ffd95c":"#d9a36c",28);
+    this.floaters.push({x:item.x,y:item.y-24,text:`+${points}`,life:.9,big:stacked});
+    this.hooks.onAnnouncement?.(stacked?"RAT TRAP RUSH — 3× SCORE!":item.type==="cheese"?"CHEESE FREEZE!":"COFFEE — 2× SCORE!");
+    this.hooks.onScore?.(Math.floor(this.score),this.combo);
+  }
+
+  hitHazard(item) {
+    const other=item.type==="pedestrian"?"dog":"pedestrian";
+    const stacked=this.mistakes[other]>0;
+    this.mistakes[item.type]=4.5;
+    const penalty=stacked?100:item.type==="dog"?50:35;
+    this.score=Math.max(0,this.score-penalty);
+    this.combo=0;
+    this.comboClock=0;
+    this.burst(item.x,item.y,"#ff645b",24);
+    this.floaters.push({x:item.x,y:item.y-24,text:`−${penalty}`,life:.9,big:stacked});
+    this.hooks.onAnnouncement?.(stacked?"PUBLIC OUTRAGE — −100!":item.type==="dog"?"WATCH THE DOG!":"WATCH THE PEDESTRIAN!");
+    this.hooks.onScore?.(Math.floor(this.score),0);
   }
 
   ratRadius(depth,district=this.districtIndex) {
@@ -659,19 +755,19 @@ export class RatRunGame {
   drawStreetArt(c,w,h) {
     const progress=this.running ? Math.min(1,this.elapsed/this.duration) : 0;
     const pulse=this.running ? Math.sin(this.worldScroll*.0022)*.004 : 0;
-    const districtPosition=this.running ? Math.min(2,this.elapsed/10) : 0;
+    const districtPosition=this.running ? Math.min(2,this.elapsed/15) : 0;
     const baseIndex=Math.min(2,Math.floor(districtPosition));
     const fraction=districtPosition-baseIndex;
     // One continuous camera curve for the entire run. It never resets when
     // districtPosition crosses 1 or 2, so the player cannot appear to reverse.
     const cameraPush=progress*.13;
-    const boundary=this.elapsed<10.8 ? 10 : this.elapsed<20.8 ? 20 : null;
+    const boundary=this.elapsed<15.8 ? 15 : this.elapsed<30.8 ? 30 : null;
     const transitionDuration=1.35;
     const transitionStart=boundary===null ? Infinity : boundary-transitionDuration/2;
     const transitionPhase=boundary===null ? -1 : (this.elapsed-transitionStart)/transitionDuration;
     const inTransition=this.running && transitionPhase>=0 && transitionPhase<=1;
-    const outgoingIndex=boundary===null ? baseIndex : Math.max(0,boundary/10-1);
-    const incomingIndex=boundary===null ? baseIndex : Math.min(2,boundary/10);
+    const outgoingIndex=boundary===null ? baseIndex : Math.max(0,boundary/15-1);
+    const incomingIndex=boundary===null ? baseIndex : Math.min(2,boundary/15);
     const visibleIndex=inTransition ? (transitionPhase<.5 ? outgoingIndex : incomingIndex) : baseIndex;
     const cameraSurge=0;
     const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
@@ -740,21 +836,9 @@ export class RatRunGame {
 
   drawStreetMotion(c,w,h,progress) {
     const speedBoost=1+progress*1.15;
-    c.lineCap="round";
 
-    // Fine road glints stream toward the viewer and spread from the vanishing point.
-    c.strokeStyle=`rgba(255,220,155,${.10+progress*.08})`;
-    for(let i=0;i<18;i++){
-      const phase=((i/18+this.worldScroll*.00062*speedBoost)%1);
-      const y=h*(.30+phase*.73);
-      const edge=this.roadEdges(y);
-      const lane=((i*37)%97)/97;
-      const x=edge.left+(edge.right-edge.left)*lane;
-      c.lineWidth=.7+phase*3.2;
-      c.beginPath();c.moveTo(x,y);c.lineTo(x+(x-w*.5)*.028,y+7+phase*30);c.stroke();
-    }
-
-    // Distinct street objects make forward distance readable on a phone.
+    // Small physical street objects make forward distance readable without
+    // translucent speed lines drifting over the painted neighborhoods.
     for(let i=0;i<9;i++){
       const phase=((i/9+this.worldScroll*.00043*speedBoost)%1);
       const y=h*(.33+phase*.73);
@@ -780,23 +864,12 @@ export class RatRunGame {
       c.restore();
     }
 
-    // Soft edge rush sells speed without covering tap targets.
-    const rushAlpha=.035+progress*.075;
-    c.strokeStyle=`rgba(255,236,199,${rushAlpha})`;
-    for(let i=0;i<8;i++){
-      const phase=((i/8+this.worldScroll*.0008*speedBoost)%1);
-      const y=h*(.36+phase*.67);
-      const edge=this.roadEdges(y);
-      const side=i%2?-1:1;
-      const x=side<0?edge.left-12-phase*28:edge.right+12+phase*28;
-      c.lineWidth=1+phase*4;
-      c.beginPath();c.moveTo(x,y);c.lineTo(x+side*phase*22,y+18+phase*46);c.stroke();
-    }
   }
 
   drawActorsAndEffects(c) {
     const sorted=[...this.rats].sort((a,b)=>a.y-b.y);
     for(const r of sorted) this.drawRat(r);
+    for(const item of [...this.pickups,...this.hazards].sort((a,b)=>a.y-b.y)) this.drawStreetItem(item);
 
     for(const ring of this.tapRings){
       const alpha=Math.max(0,ring.life/ring.maxLife);
@@ -822,6 +895,45 @@ export class RatRunGame {
       c.textAlign="center";c.shadowColor="#000";c.shadowBlur=5;c.fillText(f.text,f.x,f.y);
     }
     c.globalAlpha=1;c.shadowBlur=0;
+    this.drawEffectStatus(c);
+  }
+
+  drawStreetItem(item) {
+    const c=this.ctx;
+    const labels={cheese:"🧀",coffee:"☕",pedestrian:"🚶",dog:"🐕"};
+    const glow=item.kind==="power"?"#ffe46c":"#ff655d";
+    const bob=Math.sin(item.bob)*5;
+    c.save();c.translate(item.x,item.y+bob);
+    c.shadowColor=glow;c.shadowBlur=18;
+    c.fillStyle=item.kind==="power"?"rgba(12,22,30,.86)":"rgba(48,10,12,.82)";
+    c.strokeStyle=glow;c.lineWidth=3;
+    c.beginPath();c.arc(0,0,item.radius*1.15,0,Math.PI*2);c.fill();c.stroke();
+    c.shadowBlur=0;c.textAlign="center";c.textBaseline="middle";
+    c.font=`${Math.max(24,item.radius*1.45)}px "Segoe UI Emoji",sans-serif`;
+    c.fillText(labels[item.type],0,1);
+    c.restore();
+  }
+
+  drawEffectStatus(c) {
+    const active=[];
+    if(this.effects.cheese>0)active.push({icon:"🧀",label:"FREEZE",time:this.effects.cheese,color:"#ffe46c"});
+    if(this.effects.coffee>0)active.push({icon:"☕",label:"2× SCORE",time:this.effects.coffee,color:"#dba66f"});
+    if(this.mistakes.pedestrian>0)active.push({icon:"🚶",label:"RISK",time:this.mistakes.pedestrian,color:"#ff746c"});
+    if(this.mistakes.dog>0)active.push({icon:"🐕",label:"RISK",time:this.mistakes.dog,color:"#ff746c"});
+    if(!active.length)return;
+    const stacked=this.effects.cheese>0&&this.effects.coffee>0;
+    c.save();c.textAlign="center";c.textBaseline="middle";
+    const y=104,gap=116,total=active.length*gap-gap;
+    active.forEach((effect,index)=>{
+      const x=this.width*.5-total*.5+index*gap;
+      c.fillStyle="rgba(4,9,18,.84)";c.strokeStyle=effect.color;c.lineWidth=2;
+      c.beginPath();c.roundRect(x-52,y-21,104,42,13);c.fill();c.stroke();
+      c.font='19px "Segoe UI Emoji",sans-serif';c.fillText(effect.icon,x-37,y);
+      c.fillStyle="#fff";c.font="800 10px system-ui";c.fillText(effect.label,x+5,y-6);
+      c.fillStyle=effect.color;c.font="900 12px system-ui";c.fillText(`${effect.time.toFixed(1)}s`,x+5,y+8);
+    });
+    if(stacked){c.fillStyle="#ffe66d";c.font="1000 12px system-ui";c.fillText("RAT TRAP RUSH — 3×",this.width*.5,y+34);}
+    c.restore();
   }
 
   drawRat(r) {
