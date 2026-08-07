@@ -38,6 +38,12 @@ canvas:active { cursor: crosshair; }
   border-color: rgba(255,212,91,.82);
   box-shadow: 0 0 24px rgba(255,177,53,.38), 0 8px 28px rgba(0,0,0,.30);
 }
+#hud { transition: opacity .18s ease; }
+#app.intermission #hud,
+#app.intermission #countdown,
+#app.intermission #announcement,
+#app.intermission #district,
+#app.intermission #headline { opacity: 0 !important; }
 @keyframes comboPop {
   0% { transform: scale(.94); }
   55% { transform: scale(1.12); }

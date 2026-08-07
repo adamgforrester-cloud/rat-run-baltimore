@@ -21,12 +21,13 @@ export class RatRunGame {
     this.powerSpawnClock = 3.2;
     this.hazardSpawnClock = 6.2;
     this.iconSequence = ["cheese","coffee","contamination"];
-    this.actorSequence = ["pedestrian","dog","sanitation"];
+    this.actorSequence = ["elder","dog","jogger","sanitation","shopper","dogwalker","pedestrian"];
     this.iconIndex = 0;
     this.actorIndex = 0;
     this.effects = { cheese: 0, coffee: 0, contamination: 0 };
     this.mistakes = { pedestrian: 0, dog: 0 };
     this.intermission = null;
+    this.sceneReveal = 0;
     this.spawnClock = 0;
     this.minimumRats = 6;
     this.maximumRats = 11;
@@ -99,6 +100,7 @@ export class RatRunGame {
     this.effects = { cheese: 0, coffee: 0, contamination: 0 };
     this.mistakes = { pedestrian: 0, dog: 0 };
     this.intermission = null;
+    this.sceneReveal = 0;
     this.spawnClock = .15;
     this.shake = 0;
     this.lastCountdown = null;
@@ -138,9 +140,13 @@ export class RatRunGame {
     if(this.intermission){
       this.intermission.remaining-=dt;
       this.hooks.onTime?.(Math.ceil(Math.max(0,this.duration-this.elapsed)));
-      if(this.intermission.remaining<=0)this.intermission=null;
+      if(this.intermission.remaining<=0){
+        this.intermission=null;this.sceneReveal=.55;
+        this.hooks.onIntermission?.(false);
+      }
       return;
     }
+    this.sceneReveal=Math.max(0,this.sceneReveal-dt);
     this.elapsed += dt;
     this.worldScroll += dt*(155 + this.elapsed*2.2);
     const remaining = Math.max(0, this.duration-this.elapsed);
@@ -161,6 +167,7 @@ export class RatRunGame {
         this.pickups=[];
         this.hazards=[];
         this.intermission={remaining:4,district};
+        this.hooks.onIntermission?.(true,district);
       }
       this.hooks.onDistrict?.(district,["THE ROWHOUSES","DOWNTOWN","INNER HARBOR"][district]);
       if(this.intermission)return;
@@ -187,10 +194,10 @@ export class RatRunGame {
       this.powerSpawnClock=4.0;
     }
     this.hazardSpawnClock-=dt;
-    if(this.hazardSpawnClock<=0 && this.hazards.length<2){
+    if(this.hazardSpawnClock<=0 && this.hazards.length<4){
       const type=this.actorSequence[this.actorIndex++%this.actorSequence.length];
       this.spawnStreetItem("actor",type);
-      this.hazardSpawnClock=3.8;
+      this.hazardSpawnClock=2.75;
     }
     for(const item of [...this.pickups,...this.hazards]){
       item.life-=dt;
@@ -505,16 +512,17 @@ export class RatRunGame {
   }
 
   hitHazard(item) {
-    const other=item.type==="pedestrian"?"dog":"pedestrian";
+    const category=item.type==="dog"||item.type==="dogwalker"?"dog":"pedestrian";
+    const other=category==="pedestrian"?"dog":"pedestrian";
     const stacked=this.mistakes[other]>0;
-    this.mistakes[item.type]=4.5;
-    const penalty=stacked?100:item.type==="dog"?50:35;
+    this.mistakes[category]=4.5;
+    const penalty=stacked?100:category==="dog"?50:35;
     this.score=Math.max(0,this.score-penalty);
     this.combo=0;
     this.comboClock=0;
     this.burst(item.x,item.y,"#ff645b",24);
     this.floaters.push({x:item.x,y:item.y-24,text:`−${penalty}`,life:.9,big:stacked});
-    this.hooks.onAnnouncement?.(stacked?"PUBLIC OUTRAGE — −100!":item.type==="dog"?"WATCH THE DOG!":"WATCH THE PEDESTRIAN!");
+    this.hooks.onAnnouncement?.(stacked?"PUBLIC OUTRAGE — −100!":category==="dog"?"WATCH THE DOG!":"WATCH THE PEDESTRIAN!");
     this.hooks.onScore?.(Math.floor(this.score),0);
   }
 
@@ -558,6 +566,10 @@ export class RatRunGame {
       this.drawStreetArt(c,w,h);
       this.drawActorsAndEffects(c);
       if (this.cinematicTransition) this.drawDistrictCard(c,w,h,this.cinematicTransition);
+      else if(this.sceneReveal>0){
+        const alpha=Math.min(1,this.sceneReveal/.55);
+        c.fillStyle=`rgba(2,3,5,${alpha})`;c.fillRect(0,0,w,h);
+      }
       c.restore();
       return;
     }
@@ -798,22 +810,23 @@ export class RatRunGame {
   }
 
   drawStreetArt(c,w,h) {
-    const progress=this.running ? Math.min(1,this.elapsed/this.duration) : 0;
-    const pulse=this.running ? Math.sin(this.worldScroll*.0022)*.004 : 0;
     const baseIndex=Math.max(0,this.districtIndex);
-    // One continuous camera curve for the entire run. It never resets when
-    // districtPosition crosses 1 or 2, so the player cannot appear to reverse.
-    const cameraPush=progress*.13;
+    const localProgress=this.running?Math.max(0,Math.min(1,(this.elapsed-baseIndex*15)/15)):0;
+    const travel=localProgress*localProgress*(3-2*localProgress);
+    // Every district now has a deliberate forward camera move. Its reset is
+    // completely hidden by the black news break between neighborhoods.
+    const cameraPush=.012+travel*.145;
     const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
       if(alpha<=0)return;
       const calibration=this.streetCalibrations[index];
       const cover=Math.max(w/image.naturalWidth,h/image.naturalHeight);
-      const scale=cover*(1.018+cameraPush+pulse+scaleShift)*calibration.zoom;
+      const scale=cover*(1.018+cameraPush+scaleShift)*calibration.zoom;
       const drawW=image.naturalWidth*scale;
       const drawH=image.naturalHeight*scale;
       const sideDrift=0;
-      const horizonX=.5;
-      const horizonY=.205;
+      const zone=this.roadZones[index];
+      const horizonX=zone.centerTop;
+      const horizonY=zone.horizon;
       const drawX=w*horizonX-image.naturalWidth*horizonX*scale+sideDrift+w*calibration.offsetX;
       const drawY=h*horizonY-image.naturalHeight*horizonY*scale+h*calibration.offsetY+h*rise;
       c.globalAlpha=alpha;
@@ -949,13 +962,20 @@ export class RatRunGame {
         c.fillStyle="#4d3528";c.beginPath();c.arc(21,2,2,0,Math.PI*2);c.fill();
       }else{
         const helper=item.type==="sanitation";
-        c.strokeStyle=helper?"#e4f56b":"#25313d";c.lineWidth=8;c.lineCap="round";
+        const jogger=item.type==="jogger",elder=item.type==="elder",shopper=item.type==="shopper",dogwalker=item.type==="dogwalker";
+        c.strokeStyle=helper?"#e4f56b":jogger?"#f0a34b":elder?"#383044":"#25313d";c.lineWidth=8;c.lineCap="round";
         c.beginPath();c.moveTo(0,-1);c.lineTo(-5+step*4,19);c.moveTo(0,-1);c.lineTo(7-step*4,19);c.stroke();
-        c.fillStyle=helper?"#50ad72":"#50647a";c.beginPath();c.roundRect(-10,-25,20,29,6);c.fill();
+        c.fillStyle=helper?"#50ad72":jogger?"#db584f":elder?"#77617d":shopper?"#487ca0":"#50647a";c.beginPath();c.roundRect(-10,-25,20,29,6);c.fill();
         if(helper){c.fillStyle="#f5ed72";c.fillRect(-10,-15,20,5);}
         c.fillStyle="#c98e6a";c.beginPath();c.arc(0,-33,8,0,Math.PI*2);c.fill();
-        c.strokeStyle=helper?"#50ad72":"#50647a";c.lineWidth=5;c.beginPath();c.moveTo(-7,-17);c.lineTo(-14-step*3,-2);c.moveTo(7,-17);c.lineTo(14+step*3,-4);c.stroke();
+        c.strokeStyle=helper?"#50ad72":jogger?"#db584f":elder?"#77617d":shopper?"#487ca0":"#50647a";c.lineWidth=5;c.beginPath();c.moveTo(-7,-17);c.lineTo(-14-step*3,-2);c.moveTo(7,-17);c.lineTo(14+step*3,-4);c.stroke();
         if(helper){c.strokeStyle="#9cc0c8";c.lineWidth=3;c.beginPath();c.moveTo(14,-4);c.lineTo(18,19);c.stroke();}
+        if(elder){c.strokeStyle="#b9a888";c.lineWidth=3;c.beginPath();c.moveTo(14,-4);c.lineTo(17,21);c.quadraticCurveTo(19,25,23,22);c.stroke();}
+        if(shopper){c.fillStyle="#efcf72";c.fillRect(11,-3,12,16);c.strokeStyle="#efcf72";c.lineWidth=2;c.strokeRect(14,-8,6,7);}
+        if(dogwalker){
+          c.strokeStyle="#d7c9a8";c.lineWidth=2;c.beginPath();c.moveTo(13,-5);c.lineTo(30,9);c.stroke();
+          c.fillStyle="#9b724f";c.beginPath();c.ellipse(34,13,9,5,0,0,Math.PI*2);c.fill();c.beginPath();c.arc(41,10,4,0,Math.PI*2);c.fill();
+        }
       }
       c.restore();return;
     }

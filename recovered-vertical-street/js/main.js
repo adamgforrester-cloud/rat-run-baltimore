@@ -3,6 +3,7 @@ import { RatRunGame } from "./game.js";
 import { getTopScores, submitScore } from "./leaderboard.js";
 
 const canvas = document.getElementById("game");
+const app = document.getElementById("app");
 const overlay = document.getElementById("overlay");
 const scoreEl = document.getElementById("score");
 const timeEl = document.getElementById("time");
@@ -118,6 +119,9 @@ const game = new RatRunGame(canvas, {
     void districtEl.offsetWidth;
     districtEl.classList.add("show");
     window.setTimeout(()=>districtEl.classList.remove("show"),1700);
+  },
+  onIntermission(active) {
+    app.classList.toggle("intermission",active);
   },
   async onFinish(score) {
     overlay.classList.add("show");
