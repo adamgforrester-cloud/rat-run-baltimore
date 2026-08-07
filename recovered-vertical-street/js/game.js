@@ -20,10 +20,13 @@ export class RatRunGame {
     this.hazards = [];
     this.powerSpawnClock = 3.2;
     this.hazardSpawnClock = 6.2;
-    this.nextPowerType = "cheese";
-    this.nextHazardType = "pedestrian";
-    this.effects = { cheese: 0, coffee: 0 };
+    this.iconSequence = ["cheese","coffee","contamination"];
+    this.actorSequence = ["pedestrian","dog","sanitation"];
+    this.iconIndex = 0;
+    this.actorIndex = 0;
+    this.effects = { cheese: 0, coffee: 0, contamination: 0 };
     this.mistakes = { pedestrian: 0, dog: 0 };
+    this.intermission = null;
     this.spawnClock = 0;
     this.minimumRats = 6;
     this.maximumRats = 11;
@@ -91,10 +94,11 @@ export class RatRunGame {
     this.hazards = [];
     this.powerSpawnClock = 3.2;
     this.hazardSpawnClock = 6.2;
-    this.nextPowerType = "cheese";
-    this.nextHazardType = "pedestrian";
-    this.effects = { cheese: 0, coffee: 0 };
+    this.iconIndex = 0;
+    this.actorIndex = 0;
+    this.effects = { cheese: 0, coffee: 0, contamination: 0 };
     this.mistakes = { pedestrian: 0, dog: 0 };
+    this.intermission = null;
     this.spawnClock = .15;
     this.shake = 0;
     this.lastCountdown = null;
@@ -131,6 +135,12 @@ export class RatRunGame {
   }
 
   update(dt) {
+    if(this.intermission){
+      this.intermission.remaining-=dt;
+      this.hooks.onTime?.(Math.ceil(Math.max(0,this.duration-this.elapsed)));
+      if(this.intermission.remaining<=0)this.intermission=null;
+      return;
+    }
     this.elapsed += dt;
     this.worldScroll += dt*(155 + this.elapsed*2.2);
     const remaining = Math.max(0, this.duration-this.elapsed);
@@ -147,8 +157,13 @@ export class RatRunGame {
           const bounds=this.roadEdges(rat.y,district);
           rat.x=Math.max(bounds.left+rat.radius,Math.min(bounds.right-rat.radius,rat.x));
         }
+        this.rats=[];
+        this.pickups=[];
+        this.hazards=[];
+        this.intermission={remaining:4,district};
       }
       this.hooks.onDistrict?.(district,["THE ROWHOUSES","DOWNTOWN","INNER HARBOR"][district]);
+      if(this.intermission)return;
     }
     this.hooks.onTime?.(Math.ceil(remaining));
     const n = Math.ceil(remaining);
@@ -161,19 +176,20 @@ export class RatRunGame {
 
     this.effects.cheese=Math.max(0,this.effects.cheese-dt);
     this.effects.coffee=Math.max(0,this.effects.coffee-dt);
+    this.effects.contamination=Math.max(0,this.effects.contamination-dt);
     this.mistakes.pedestrian=Math.max(0,this.mistakes.pedestrian-dt);
     this.mistakes.dog=Math.max(0,this.mistakes.dog-dt);
 
     this.powerSpawnClock-=dt;
     if(this.powerSpawnClock<=0 && this.pickups.length<2){
-      this.spawnStreetItem("power",this.nextPowerType);
-      this.nextPowerType=this.nextPowerType==="cheese"?"coffee":"cheese";
+      const type=this.iconSequence[this.iconIndex++%this.iconSequence.length];
+      this.spawnStreetItem(type==="contamination"?"danger":"power",type);
       this.powerSpawnClock=4.0;
     }
     this.hazardSpawnClock-=dt;
     if(this.hazardSpawnClock<=0 && this.hazards.length<2){
-      this.spawnStreetItem("hazard",this.nextHazardType);
-      this.nextHazardType=this.nextHazardType==="pedestrian"?"dog":"pedestrian";
+      const type=this.actorSequence[this.actorIndex++%this.actorSequence.length];
+      this.spawnStreetItem("actor",type);
       this.hazardSpawnClock=3.8;
     }
     for(const item of [...this.pickups,...this.hazards]){
@@ -181,7 +197,11 @@ export class RatRunGame {
       item.bob+=dt*4;
       item.y+=dt*(7+item.depth*8);
       const bounds=this.roadEdges(item.y);
-      item.x=bounds.left+(bounds.right-bounds.left)*item.laneRatio;
+      item.depth=bounds.t;
+      item.radius=(item.kind==="actor"?14:18)+item.depth*(item.kind==="actor"?20:7);
+      item.x=item.kind==="actor"
+        ? (item.side<0?bounds.left-item.radius*.82:bounds.right+item.radius*.82)
+        : bounds.left+(bounds.right-bounds.left)*item.laneRatio;
     }
     this.pickups=this.pickups.filter(item=>item.life>0&&item.y<this.height*.96);
     this.hazards=this.hazards.filter(item=>item.life>0&&item.y<this.height*.96);
@@ -401,7 +421,7 @@ export class RatRunGame {
       const item=this.pickups[i];
       if(Math.hypot(x-item.x,y-item.y)<Math.max(34,item.radius*1.7)){
         this.pickups.splice(i,1);
-        this.activatePower(item);
+        if(item.kind==="danger")this.hitBadIcon(item);else this.activatePower(item);
         return;
       }
     }
@@ -409,7 +429,7 @@ export class RatRunGame {
       const item=this.hazards[i];
       if(Math.hypot(x-item.x,y-item.y)<Math.max(38,item.radius*1.7)){
         this.hazards.splice(i,1);
-        this.hitHazard(item);
+        if(item.type==="sanitation")this.activateHelper(item);else this.hitHazard(item);
         return;
       }
     }
@@ -420,7 +440,8 @@ export class RatRunGame {
         this.rats.splice(i,1);
         this.combo += 1;
         this.comboClock = 1.15;
-        const multiplier=this.effects.cheese>0&&this.effects.coffee>0 ? 3 : this.effects.coffee>0 ? 2 : 1;
+        const boost=this.effects.cheese>0&&this.effects.coffee>0 ? 3 : this.effects.coffee>0 ? 2 : 1;
+        const multiplier=boost*(this.effects.contamination>0?.5:1);
         const earned = (r.value + Math.min(this.combo,12)*2)*multiplier;
         this.score += earned;
         r.squash = 1;
@@ -465,8 +486,11 @@ export class RatRunGame {
     const bounds=this.roadEdges(y);
     const laneRatio=.25+Math.random()*.50;
     const depth=bounds.t;
-    const item={kind,type,y,x:bounds.left+(bounds.right-bounds.left)*laneRatio,laneRatio,depth,radius:18+depth*7,life:7.5,bob:Math.random()*Math.PI*2};
-    (kind==="power"?this.pickups:this.hazards).push(item);
+    const side=Math.random()<.5?-1:1;
+    const radius=(kind==="actor"?14:18)+depth*(kind==="actor"?20:7);
+    const x=kind==="actor"?(side<0?bounds.left-radius*.82:bounds.right+radius*.82):bounds.left+(bounds.right-bounds.left)*laneRatio;
+    const item={kind,type,y,x,laneRatio,side,depth,radius,life:8.5,bob:Math.random()*Math.PI*2};
+    (kind==="actor"?this.hazards:this.pickups).push(item);
   }
 
   activatePower(item) {
@@ -492,6 +516,27 @@ export class RatRunGame {
     this.floaters.push({x:item.x,y:item.y-24,text:`−${penalty}`,life:.9,big:stacked});
     this.hooks.onAnnouncement?.(stacked?"PUBLIC OUTRAGE — −100!":item.type==="dog"?"WATCH THE DOG!":"WATCH THE PEDESTRIAN!");
     this.hooks.onScore?.(Math.floor(this.score),0);
+  }
+
+  hitBadIcon(item) {
+    this.effects.contamination=5.5;
+    this.score=Math.max(0,this.score-25);
+    this.combo=0;this.comboClock=0;
+    this.burst(item.x,item.y,"#ff3f48",30);
+    this.floaters.push({x:item.x,y:item.y-24,text:"−25",life:.9,big:true});
+    this.hooks.onAnnouncement?.("CONTAMINATED — HALF POINTS!");
+    this.hooks.onScore?.(Math.floor(this.score),0);
+  }
+
+  activateHelper(item) {
+    const cleaned=this.effects.contamination>0||this.mistakes.pedestrian>0||this.mistakes.dog>0;
+    this.effects.contamination=0;
+    this.mistakes.pedestrian=0;this.mistakes.dog=0;
+    this.score+=cleaned?75:40;
+    this.burst(item.x,item.y,"#73e6a1",30);
+    this.floaters.push({x:item.x,y:item.y-24,text:`+${cleaned?75:40}`,life:.9,big:cleaned});
+    this.hooks.onAnnouncement?.(cleaned?"STREETS CLEANED — +75!":"SANITATION BONUS!");
+    this.hooks.onScore?.(Math.floor(this.score),this.combo);
   }
 
   ratRadius(depth,district=this.districtIndex) {
@@ -755,21 +800,10 @@ export class RatRunGame {
   drawStreetArt(c,w,h) {
     const progress=this.running ? Math.min(1,this.elapsed/this.duration) : 0;
     const pulse=this.running ? Math.sin(this.worldScroll*.0022)*.004 : 0;
-    const districtPosition=this.running ? Math.min(2,this.elapsed/15) : 0;
-    const baseIndex=Math.min(2,Math.floor(districtPosition));
-    const fraction=districtPosition-baseIndex;
+    const baseIndex=Math.max(0,this.districtIndex);
     // One continuous camera curve for the entire run. It never resets when
     // districtPosition crosses 1 or 2, so the player cannot appear to reverse.
     const cameraPush=progress*.13;
-    const boundary=this.elapsed<15.8 ? 15 : this.elapsed<30.8 ? 30 : null;
-    const transitionDuration=1.35;
-    const transitionStart=boundary===null ? Infinity : boundary-transitionDuration/2;
-    const transitionPhase=boundary===null ? -1 : (this.elapsed-transitionStart)/transitionDuration;
-    const inTransition=this.running && transitionPhase>=0 && transitionPhase<=1;
-    const outgoingIndex=boundary===null ? baseIndex : Math.max(0,boundary/15-1);
-    const incomingIndex=boundary===null ? baseIndex : Math.min(2,boundary/15);
-    const visibleIndex=inTransition ? (transitionPhase<.5 ? outgoingIndex : incomingIndex) : baseIndex;
-    const cameraSurge=0;
     const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
       if(alpha<=0)return;
       const calibration=this.streetCalibrations[index];
@@ -786,7 +820,7 @@ export class RatRunGame {
       c.drawImage(image,drawX,drawY,drawW,drawH);
     };
     // Never show two roads at once. The cinematic cover hides the hard cut.
-    drawLayer(this.streetArts[visibleIndex],1,visibleIndex,cameraSurge,0);
+    drawLayer(this.streetArts[baseIndex],1,baseIndex,0,0);
     c.globalAlpha=1;
 
     const depthShade=c.createLinearGradient(0,0,0,h);
@@ -796,41 +830,42 @@ export class RatRunGame {
     c.fillStyle=depthShade;c.fillRect(0,0,w,h);
 
     if (this.running) {
-      this.drawStreetMotion(c,w,h,progress);
-      this.cinematicTransition=inTransition ? {
-        phase:transitionPhase,
-        title:["THE ROWHOUSES","DOWNTOWN","INNER HARBOR"][incomingIndex]
-      } : null;
+      this.cinematicTransition=this.intermission;
     } else {
       this.cinematicTransition=null;
     }
   }
 
   drawDistrictCard(c,w,h,transition) {
-    const {phase,title}=transition;
-    const energy=Math.sin(phase*Math.PI);
-    const cover=Math.min(.92,energy*1.12);
-    const shade=c.createRadialGradient(w*.5,h*.32,0,w*.5,h*.32,w*.78);
-    shade.addColorStop(0,`rgba(7,12,18,${cover*.55})`);
-    shade.addColorStop(1,`rgba(2,5,9,${cover})`);
-    c.fillStyle=shade;c.fillRect(0,0,w,h);
-
-    const softGlow=c.createRadialGradient(w*.5,h*.43,0,w*.5,h*.43,w*.32);
-    softGlow.addColorStop(0,`rgba(255,224,171,${energy*.10})`);
-    softGlow.addColorStop(1,"rgba(255,224,171,0)");
-    c.fillStyle=softGlow;c.fillRect(0,0,w,h);
-
-    const titleIn=Math.max(0,Math.min(1,(phase-.24)/.16));
-    const titleOut=Math.max(0,Math.min(1,(.82-phase)/.16));
-    c.globalAlpha=titleIn*titleOut;
+    const title=["THE ROWHOUSES","DOWNTOWN","INNER HARBOR"][transition.district];
+    const headline=transition.district===1?"MAYOR DENIES RAT CRISIS":"CITY DECLARES RAT EMERGENCY";
+    c.fillStyle="#020305";c.fillRect(0,0,w,h);
+    c.globalAlpha=1;
     c.textAlign="center";
-    c.shadowColor="rgba(0,0,0,.9)";c.shadowBlur=18;
-    c.fillStyle="#f7e4bd";
-    c.font=`900 ${Math.max(28,Math.min(58,w*.055))}px system-ui`;
-    c.fillText(title,w*.5,h*.50);
-    c.fillStyle="#dfb75e";
-    c.font=`800 ${Math.max(11,Math.min(17,w*.016))}px system-ui`;
-    c.fillText("BALTIMORE",w*.5,h*.50+34);
+    c.fillStyle="#ff6257";c.font=`1000 ${Math.max(11,Math.min(17,w*.018))}px system-ui`;
+    c.fillText("BALTIMORE NEWS BREAK",w*.5,h*.16);
+    c.fillStyle="#fff";c.font=`1000 ${Math.max(26,Math.min(48,w*.050))}px system-ui`;
+    c.fillText(headline,w*.5,h*.25);
+    c.fillStyle="#f5ce68";c.font=`900 ${Math.max(17,Math.min(28,w*.030))}px system-ui`;
+    c.fillText(`NEXT: ${title}`,w*.5,h*.33);
+    const guide=[
+      ["🧀  CHEESE","FREEZES RATS","#ffe46c"],
+      ["☕  COFFEE","DOUBLE POINTS","#dba66f"],
+      ["☣  CONTAMINATION","HALF POINTS","#ff6257"],
+      ["🧹  SANITATION","CLEARS PENALTIES","#73e6a1"],
+      ["🚶  PEOPLE  +  🐕  DOGS","AVOID — PENALTIES STACK","#ff837b"]
+    ];
+    const startY=h*.46,row=Math.min(64,h*.085);
+    guide.forEach((entry,index)=>{
+      const y=startY+index*row;
+      c.fillStyle="rgba(255,255,255,.07)";c.beginPath();c.roundRect(w*.16,y-row*.36,w*.68,row*.72,12);c.fill();
+      c.textAlign="left";c.fillStyle=entry[2];c.font=`900 ${Math.max(14,Math.min(20,w*.021))}px "Segoe UI Emoji",system-ui`;
+      c.fillText(entry[0],w*.20,y);
+      c.textAlign="right";c.fillStyle="#dbe1e8";c.font=`800 ${Math.max(11,Math.min(16,w*.016))}px system-ui`;
+      c.fillText(entry[1],w*.80,y);
+    });
+    c.textAlign="center";c.fillStyle="rgba(255,255,255,.6)";c.font=`700 ${Math.max(11,Math.min(15,w*.015))}px system-ui`;
+    c.fillText("GAMEPLAY AND TIMER PAUSED",w*.5,h*.88);
     c.globalAlpha=1;c.shadowBlur=0;
   }
 
@@ -900,12 +935,34 @@ export class RatRunGame {
 
   drawStreetItem(item) {
     const c=this.ctx;
-    const labels={cheese:"🧀",coffee:"☕",pedestrian:"🚶",dog:"🐕"};
-    const glow=item.kind==="power"?"#ffe46c":"#ff655d";
     const bob=Math.sin(item.bob)*5;
     c.save();c.translate(item.x,item.y+bob);
+    if(item.kind==="actor"){
+      const s=item.radius/24,step=Math.sin(item.bob*2);
+      c.scale(s*(item.side<0?1:-1),s);
+      c.fillStyle="rgba(0,0,0,.28)";c.beginPath();c.ellipse(0,22,17,5,0,0,Math.PI*2);c.fill();
+      if(item.type==="dog"){
+        c.fillStyle="#9b724f";c.beginPath();c.ellipse(0,7,18,10,0,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(15,2,8,0,Math.PI*2);c.fill();
+        c.strokeStyle="#725039";c.lineWidth=4;c.beginPath();c.moveTo(-14,9);c.lineTo(-21,-1);c.stroke();
+        c.lineWidth=3;c.beginPath();c.moveTo(-8,14);c.lineTo(-10+step*3,23);c.moveTo(8,14);c.lineTo(11-step*3,23);c.stroke();
+        c.fillStyle="#4d3528";c.beginPath();c.arc(21,2,2,0,Math.PI*2);c.fill();
+      }else{
+        const helper=item.type==="sanitation";
+        c.strokeStyle=helper?"#e4f56b":"#25313d";c.lineWidth=8;c.lineCap="round";
+        c.beginPath();c.moveTo(0,-1);c.lineTo(-5+step*4,19);c.moveTo(0,-1);c.lineTo(7-step*4,19);c.stroke();
+        c.fillStyle=helper?"#50ad72":"#50647a";c.beginPath();c.roundRect(-10,-25,20,29,6);c.fill();
+        if(helper){c.fillStyle="#f5ed72";c.fillRect(-10,-15,20,5);}
+        c.fillStyle="#c98e6a";c.beginPath();c.arc(0,-33,8,0,Math.PI*2);c.fill();
+        c.strokeStyle=helper?"#50ad72":"#50647a";c.lineWidth=5;c.beginPath();c.moveTo(-7,-17);c.lineTo(-14-step*3,-2);c.moveTo(7,-17);c.lineTo(14+step*3,-4);c.stroke();
+        if(helper){c.strokeStyle="#9cc0c8";c.lineWidth=3;c.beginPath();c.moveTo(14,-4);c.lineTo(18,19);c.stroke();}
+      }
+      c.restore();return;
+    }
+    const labels={cheese:"🧀",coffee:"☕",contamination:"☣"};
+    const glow=item.kind==="power"?"#ffe46c":"#ff3f48";
     c.shadowColor=glow;c.shadowBlur=18;
-    c.fillStyle=item.kind==="power"?"rgba(12,22,30,.86)":"rgba(48,10,12,.82)";
+    c.fillStyle=item.kind==="power"?"rgba(12,22,30,.86)":"rgba(52,5,8,.9)";
     c.strokeStyle=glow;c.lineWidth=3;
     c.beginPath();c.arc(0,0,item.radius*1.15,0,Math.PI*2);c.fill();c.stroke();
     c.shadowBlur=0;c.textAlign="center";c.textBaseline="middle";
@@ -918,6 +975,7 @@ export class RatRunGame {
     const active=[];
     if(this.effects.cheese>0)active.push({icon:"🧀",label:"FREEZE",time:this.effects.cheese,color:"#ffe46c"});
     if(this.effects.coffee>0)active.push({icon:"☕",label:"2× SCORE",time:this.effects.coffee,color:"#dba66f"});
+    if(this.effects.contamination>0)active.push({icon:"☣",label:"½ POINTS",time:this.effects.contamination,color:"#ff3f48"});
     if(this.mistakes.pedestrian>0)active.push({icon:"🚶",label:"RISK",time:this.mistakes.pedestrian,color:"#ff746c"});
     if(this.mistakes.dog>0)active.push({icon:"🐕",label:"RISK",time:this.mistakes.dog,color:"#ff746c"});
     if(!active.length)return;
