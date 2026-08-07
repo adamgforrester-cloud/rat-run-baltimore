@@ -46,9 +46,9 @@ export class RatRunGame {
     // Each painted district has different road geometry. These normalized
     // trapezoids keep rats inside the playable pavement in that artwork.
     this.roadZones = [
-      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .11, halfBottom: .43, spawnMin: .48 },
-      { horizon: .69, bottom: 1.02, centerTop: .58, centerBottom: .52, halfTop: .015, halfBottom: .22, spawnMin: .78 },
-      { horizon: .69, bottom: 1.02, centerTop: .52, centerBottom: .49, halfTop: .015, halfBottom: .18, spawnMin: .78 }
+      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .11, halfBottom: .43, spawnMin: .48, ratMin: 9, ratMax: 24 },
+      { horizon: .69, bottom: 1.02, centerTop: .58, centerBottom: .52, halfTop: .015, halfBottom: .22, spawnMin: .78, ratMin: 8, ratMax: 19 },
+      { horizon: .69, bottom: 1.02, centerTop: .52, centerBottom: .49, halfTop: .015, halfBottom: .18, spawnMin: .78, ratMin: 7, ratMax: 15 }
     ];
     this.ratLanes=[.20,.35,.50,.65,.80];
     this.streetArt = this.streetArts[0];
@@ -196,7 +196,7 @@ export class RatRunGame {
     },{value:yCandidates[0],clearance:-1}).value;
     let y=this.height*yRatio;
     const depth = Math.max(0,Math.min(1,(y-horizon)/(roadBottom-horizon)));
-    const radius = 10 + depth*14;
+    const radius = this.ratRadius(depth,Math.max(0,this.districtIndex));
     const road = this.roadEdges(y);
     const edgePadding = radius*1.4;
     const districtBoost=1+Math.min(2,Math.floor(this.elapsed/10))*.14;
@@ -258,6 +258,10 @@ export class RatRunGame {
     r.panicClock -= dt;
     r.squash = Math.max(0,r.squash-dt*5);
     r.turn += (0-r.turn)*Math.min(1,dt*9);
+    const district=Math.max(0,this.districtIndex);
+    const perspective=this.roadEdges(r.y,district).t;
+    const desiredRadius=this.ratRadius(perspective,district);
+    r.radius+=(desiredRadius-r.radius)*Math.min(1,dt*5.5);
 
     if (r.panicClock <= 0) {
       r.state = "panic";
@@ -313,8 +317,6 @@ export class RatRunGame {
     const targetX=bounds.left+(bounds.right-bounds.left)*r.laneRatio;
     r.x += (targetX-r.x)*Math.min(1,dt*(r.state==="panic"?8:4.8));
     r.depth=bounds.t;
-    const perspectiveRadius=10+r.depth*14;
-    r.radius+=(perspectiveRadius-r.radius)*Math.min(1,dt*7);
     r.turn+=(r.laneVelocity*.75-r.turn)*Math.min(1,dt*4);
     r.baseY=r.y;
     r.laneGoal=r.y;
@@ -394,6 +396,12 @@ export class RatRunGame {
     const center=this.width*(zone.centerTop+(zone.centerBottom-zone.centerTop)*t);
     const half=this.width*(zone.halfTop+(zone.halfBottom-zone.halfTop)*t);
     return {left:center-half,right:center+half,t};
+  }
+
+  ratRadius(depth,district=this.districtIndex) {
+    const zone=this.roadZones[Math.max(0,Math.min(2,district))];
+    const eased=Math.pow(Math.max(0,Math.min(1,depth)),.82);
+    return zone.ratMin+(zone.ratMax-zone.ratMin)*eased;
   }
 
   drawStaticPreview() {
@@ -654,7 +662,9 @@ export class RatRunGame {
     const districtPosition=this.running ? Math.min(2,this.elapsed/10) : 0;
     const baseIndex=Math.min(2,Math.floor(districtPosition));
     const fraction=districtPosition-baseIndex;
-    const cameraPush=progress*.055+fraction*.075;
+    // One continuous camera curve for the entire run. It never resets when
+    // districtPosition crosses 1 or 2, so the player cannot appear to reverse.
+    const cameraPush=progress*.13;
     const boundary=this.elapsed<10.8 ? 10 : this.elapsed<20.8 ? 20 : null;
     const transitionDuration=1.35;
     const transitionStart=boundary===null ? Infinity : boundary-transitionDuration/2;
@@ -663,9 +673,7 @@ export class RatRunGame {
     const outgoingIndex=boundary===null ? baseIndex : Math.max(0,boundary/10-1);
     const incomingIndex=boundary===null ? baseIndex : Math.min(2,boundary/10);
     const visibleIndex=inTransition ? (transitionPhase<.5 ? outgoingIndex : incomingIndex) : baseIndex;
-    const cameraSurge=inTransition
-      ? (transitionPhase<.5 ? transitionPhase/.5*.075 : (1-transitionPhase)/.5*.025)
-      : 0;
+    const cameraSurge=0;
     const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
       if(alpha<=0)return;
       const calibration=this.streetCalibrations[index];
@@ -673,7 +681,7 @@ export class RatRunGame {
       const scale=cover*(1.018+cameraPush+pulse+scaleShift)*calibration.zoom;
       const drawW=image.naturalWidth*scale;
       const drawH=image.naturalHeight*scale;
-      const sideDrift=this.running ? Math.sin(this.elapsed*.42)*w*.009*progress : 0;
+      const sideDrift=0;
       const horizonX=.5;
       const horizonY=.205;
       const drawX=w*horizonX-image.naturalWidth*horizonX*scale+sideDrift+w*calibration.offsetX;
