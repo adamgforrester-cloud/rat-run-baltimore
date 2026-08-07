@@ -182,18 +182,27 @@ export class RatRunGame {
     const zone=this.roadZones[Math.max(0,this.districtIndex)];
     const horizon = this.height*zone.horizon;
     const roadBottom = this.height*zone.bottom;
-    let y = this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
+    const routeRoll=Math.random();
+    const motion=routeRoll<.52?"across":routeRoll<.72?"toward":routeRoll<.88?"away":"diagonal";
+    let y=motion==="toward"||motion==="diagonal"
+      ? this.height*(zone.spawnMin+.015)
+      : motion==="away" ? this.height*.94
+      : this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
     for (let attempt=0; attempt<6; attempt++) {
-      const crowded=this.rats.some(r => r.dir===(fromLeft?1:-1) && Math.abs(r.y-y)<Math.max(46,r.radius*3));
+      const crowded=this.rats.some(r => Math.abs(r.y-y)<Math.max(42,r.radius*2.6));
       if (!crowded) break;
-      y = this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
+      if(motion==="across") y=this.height*(zone.spawnMin+Math.random()*(.95-zone.spawnMin));
     }
-    const depth = (y-horizon)/(roadBottom-horizon);
+    const depth = Math.max(0,Math.min(1,(y-horizon)/(roadBottom-horizon)));
     const radius = 10 + depth*14;
     const road = this.roadEdges(y);
     const edgePadding = radius*1.4;
     const districtBoost=1+Math.min(2,Math.floor(this.elapsed/10))*.14;
     const speed = (105 + depth*125 + Math.random()*55)*districtBoost;
+    const laneRatio=.24+Math.random()*.52;
+    const verticalDirection=motion==="away"?-1:1;
+    const verticalSpeed=(42+Math.random()*42)*districtBoost*verticalDirection;
+    const diagonalDirection=Math.random()<.5?-1:1;
     const coats=[
       {body:"#655e5b",dark:"#4b4543",belly:"#8a807c",ear:"#d39a95",tail:"#a98077"},
       {body:"#795746",dark:"#563c31",belly:"#9b7460",ear:"#d59a8c",tail:"#b27e73"},
@@ -201,11 +210,17 @@ export class RatRunGame {
       {body:"#8b7b68",dark:"#66594a",belly:"#ad9b82",ear:"#dda69d",tail:"#b78d83"}
     ];
     this.rats.push({
-      x: fromLeft ? road.left+edgePadding : road.right-edgePadding,
+      x: motion==="across"
+        ? (fromLeft ? road.left+edgePadding : road.right-edgePadding)
+        : road.left+(road.right-road.left)*laneRatio,
       y,
       baseY:y,
       vx:(fromLeft?1:-1)*speed,
       dir:fromLeft?1:-1,
+      motion,
+      vy:verticalSpeed,
+      laneRatio,
+      laneVelocity:motion==="diagonal"?diagonalDirection*(.18+Math.random()*.12):(Math.random()-.5)*.035,
       radius,
       depth,
       gait:Math.random()*Math.PI*2,
@@ -226,7 +241,7 @@ export class RatRunGame {
 
   updateRat(r,dt) {
     r.life -= dt;
-    r.gait += dt*(13 + Math.abs(r.vx)*.03);
+    r.gait += dt*(13 + (Math.abs(r.vx)+Math.abs(r.vy||0))*.025);
     r.look += dt*5;
     r.stateClock -= dt;
     r.panicClock -= dt;
@@ -263,15 +278,36 @@ export class RatRunGame {
       r.state==="panic" ? 1.62 :
       r.state==="dash" ? 1.08 : .82;
 
-    r.x += r.vx*speedScale*dt;
+    if(r.motion==="across"){
+      r.x += r.vx*speedScale*dt;
+      const footWobble = Math.sin(r.gait)*2.7*r.depth;
+      const targetY = r.state==="weave" || r.state==="panic" ? r.laneGoal : r.baseY;
+      r.y += (targetY + footWobble - r.y)*Math.min(1,dt*(r.state==="panic"?13:8));
+      const bounds=this.roadEdges(r.y);
+      const pad=r.radius*.72;
+      if(r.dir>0 && r.x>=bounds.right-pad) r.life=0;
+      if(r.dir<0 && r.x<=bounds.left+pad) r.life=0;
+      return;
+    }
 
-    const footWobble = Math.sin(r.gait)*2.7*r.depth;
-    const targetY = r.state==="weave" || r.state==="panic" ? r.laneGoal : r.baseY;
-    r.y += (targetY + footWobble - r.y)*Math.min(1,dt*(r.state==="panic"?13:8));
+    const zone=this.roadZones[Math.max(0,this.districtIndex)];
+    r.y += r.vy*speedScale*dt;
+    r.laneRatio += r.laneVelocity*speedScale*dt;
+    if(r.laneRatio<.18||r.laneRatio>.82){
+      r.laneRatio=Math.max(.18,Math.min(.82,r.laneRatio));
+      r.laneVelocity*=-1;
+      r.dir=r.laneVelocity>=0?1:-1;
+    }
     const bounds=this.roadEdges(r.y);
-    const pad=r.radius*.72;
-    if(r.dir>0 && r.x>=bounds.right-pad) r.life=0;
-    if(r.dir<0 && r.x<=bounds.left+pad) r.life=0;
+    const targetX=bounds.left+(bounds.right-bounds.left)*r.laneRatio;
+    r.x += (targetX-r.x)*Math.min(1,dt*(r.state==="panic"?8:4.8));
+    r.depth=bounds.t;
+    const perspectiveRadius=10+r.depth*14;
+    r.radius+=(perspectiveRadius-r.radius)*Math.min(1,dt*7);
+    r.turn+=(r.laneVelocity*.75-r.turn)*Math.min(1,dt*4);
+    r.baseY=r.y;
+    r.laneGoal=r.y;
+    if(r.y>=this.height*.955||r.y<=this.height*(zone.spawnMin-.01)) r.life=0;
   }
 
   pointer(event) {
