@@ -2,6 +2,9 @@
 const SUPABASE_URL = "https://vaavrtkobsfqcessccfh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_NizQeRBjoMpbgMTb5aM9NQ_UN8nZp0f";
 const TABLE = "rat_run_scores";
+// Season 2 begins with the layered-parallax public feedback build. Older
+// scores remain archived in Supabase and can be restored or displayed later.
+const SEASON_START = "2026-08-08T00:49:38Z";
 
 function cleanName(value) {
   return String(value || "PLAYER")
@@ -22,6 +25,7 @@ function headers(extra = {}) {
 export async function getTopScores(limit = 10) {
   const query = new URLSearchParams({
     select: "player_name,score,created_at",
+    created_at: `gte.${SEASON_START}`,
     order: "score.desc",
     limit: String(limit)
   });

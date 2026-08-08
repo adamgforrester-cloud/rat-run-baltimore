@@ -1,5 +1,5 @@
 
-const CACHE = "rat-run-baltimore-forward-streets-v12";
+const CACHE = "rat-run-baltimore-season-two-v16";
 const FILES = [
   "./",
   "./index.html",
@@ -8,9 +8,9 @@ const FILES = [
   "./js/game.js",
   "./js/audio.js",
   "./js/leaderboard.js",
-  "./public/assets/baltimore-street.webp",
-  "./public/assets/baltimore-downtown.webp",
-  "./public/assets/baltimore-harbor-v3.webp",
+  "./public/assets/baltimore-rowhouses-shared-road-v13.png",
+  "./public/assets/baltimore-downtown-shared-road-v13.png",
+  "./public/assets/baltimore-harbor-right-water-v14.png",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"

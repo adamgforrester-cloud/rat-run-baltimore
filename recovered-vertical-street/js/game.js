@@ -21,7 +21,7 @@ export class RatRunGame {
     this.powerSpawnClock = 3.2;
     this.hazardSpawnClock = 6.2;
     this.iconSequence = ["cheese","coffee","contamination"];
-    this.actorSequence = ["elder","dog","jogger","sanitation","shopper","dogwalker","pedestrian"];
+    this.actorSequence = ["elder","dog","jogger","shopper","dogwalker","pedestrian"];
     this.iconIndex = 0;
     this.actorIndex = 0;
     this.effects = { cheese: 0, coffee: 0, contamination: 0 };
@@ -35,12 +35,13 @@ export class RatRunGame {
     this.shake = 0;
     this.lastCountdown = null;
     this.districtIndex = -1;
+    this.sanitationSpawnedDistricts = new Set();
     this.worldScroll = 0;
     this.lastSpawnSide = Math.random() < .5 ? -1 : 1;
     this.streetArts = [
-      "./public/assets/baltimore-street.webp",
-      "./public/assets/baltimore-downtown.webp",
-      "./public/assets/baltimore-harbor-v3.webp"
+      "./public/assets/baltimore-rowhouses-shared-road-v13.png",
+      "./public/assets/baltimore-downtown-shared-road-v13.png",
+      "./public/assets/baltimore-harbor-right-water-v14.png"
     ].map(src => {
       const image=new Image();
       image.decoding="async";
@@ -48,19 +49,17 @@ export class RatRunGame {
       image.src=src;
       return image;
     });
-    // Each generated scene places its road at a slightly different point.
-    // Small offsets keep the full artwork visible while joining the road centers.
     this.streetCalibrations = [
       { offsetX: 0, offsetY: 0, zoom: 1 },
       { offsetX: 0, offsetY: 0, zoom: 1 },
-      { offsetX: .045, offsetY: .12, zoom: 1.05 }
+      { offsetX: 0, offsetY: 0, zoom: 1 }
     ];
-    // Each painted district has different road geometry. These normalized
-    // trapezoids keep rats inside the playable pavement in that artwork.
+    // All three paintings use this same road template. Gameplay therefore
+    // retains one continuous vanishing point and one consistent pavement area.
     this.roadZones = [
-      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .11, halfBottom: .43, spawnMin: .48, ratMin: 9, ratMax: 24 },
-      { horizon: .69, bottom: 1.02, centerTop: .58, centerBottom: .52, halfTop: .015, halfBottom: .22, spawnMin: .78, ratMin: 8, ratMax: 19 },
-      { horizon: .69, bottom: 1.02, centerTop: .52, centerBottom: .49, halfTop: .015, halfBottom: .18, spawnMin: .78, ratMin: 7, ratMax: 15 }
+      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .035, halfBottom: .42, spawnMin: .44, ratMin: 7, ratMax: 22 },
+      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .035, halfBottom: .42, spawnMin: .44, ratMin: 7, ratMax: 22 },
+      { horizon: .30, bottom: 1.02, centerTop: .50, centerBottom: .50, halfTop: .035, halfBottom: .42, spawnMin: .44, ratMin: 7, ratMax: 22 }
     ];
     this.ratLanes=[.20,.35,.50,.65,.80];
     this.streetArt = this.streetArts[0];
@@ -105,6 +104,7 @@ export class RatRunGame {
     this.shake = 0;
     this.lastCountdown = null;
     this.districtIndex = -1;
+    this.sanitationSpawnedDistricts = new Set();
     this.worldScroll = 0;
     this.lastSpawnSide = Math.random() < .5 ? -1 : 1;
     this.last = performance.now();
@@ -166,6 +166,7 @@ export class RatRunGame {
         this.rats=[];
         this.pickups=[];
         this.hazards=[];
+        this.shake=0;
         this.intermission={remaining:4,district};
         this.hooks.onIntermission?.(true,district);
       }
@@ -187,6 +188,14 @@ export class RatRunGame {
     this.mistakes.pedestrian=Math.max(0,this.mistakes.pedestrian-dt);
     this.mistakes.dog=Math.max(0,this.mistakes.dog-dt);
 
+    // One unmistakable sanitation worker appears in every neighborhood.
+    // The timing is district-relative so a player can never miss all of them.
+    const districtElapsed=this.elapsed-district*15;
+    if(districtElapsed>=4.25 && !this.sanitationSpawnedDistricts.has(district)){
+      this.spawnStreetItem("actor","sanitation");
+      this.sanitationSpawnedDistricts.add(district);
+    }
+
     this.powerSpawnClock-=dt;
     if(this.powerSpawnClock<=0 && this.pickups.length<2){
       const type=this.iconSequence[this.iconIndex++%this.iconSequence.length];
@@ -202,7 +211,8 @@ export class RatRunGame {
     for(const item of [...this.pickups,...this.hazards]){
       item.life-=dt;
       item.bob+=dt*4;
-      item.y+=dt*(7+item.depth*8);
+      // Accelerating approach creates forward travel without zooming the art.
+      item.y+=dt*(30+item.depth*105);
       const bounds=this.roadEdges(item.y);
       item.depth=bounds.t;
       item.radius=(item.kind==="actor"?14:18)+item.depth*(item.kind==="actor"?20:7);
@@ -560,7 +570,7 @@ export class RatRunGame {
   draw() {
     const c=this.ctx,w=this.width,h=this.height;
     c.save();
-    if (this.shake>0) c.translate((Math.random()-.5)*this.shake,(Math.random()-.5)*this.shake);
+    if (this.shake>0 && !this.intermission) c.translate((Math.random()-.5)*this.shake,(Math.random()-.5)*this.shake);
 
     if (this.streetArts.every(image => image.complete && image.naturalWidth)) {
       this.drawStreetArt(c,w,h);
@@ -811,29 +821,41 @@ export class RatRunGame {
 
   drawStreetArt(c,w,h) {
     const baseIndex=Math.max(0,this.districtIndex);
-    const localProgress=this.running?Math.max(0,Math.min(1,(this.elapsed-baseIndex*15)/15)):0;
-    const travel=localProgress*localProgress*(3-2*localProgress);
-    // Every district now has a deliberate forward camera move. Its reset is
-    // completely hidden by the black news break between neighborhoods.
-    const cameraPush=.012+travel*.145;
-    const drawLayer=(image,alpha,index,scaleShift=0,rise=0) => {
+    const local=this.running?Math.max(0,Math.min(1,(this.elapsed-baseIndex*15)/15)):0;
+    const travel=local*local*(3-2*local);
+    const drawLayer=(image,alpha,index,zoom=1,clip=null) => {
       if(alpha<=0)return;
       const calibration=this.streetCalibrations[index];
       const cover=Math.max(w/image.naturalWidth,h/image.naturalHeight);
-      const scale=cover*(1.018+cameraPush+scaleShift)*calibration.zoom;
+      const scale=cover*calibration.zoom*zoom;
       const drawW=image.naturalWidth*scale;
       const drawH=image.naturalHeight*scale;
-      const sideDrift=0;
       const zone=this.roadZones[index];
       const horizonX=zone.centerTop;
       const horizonY=zone.horizon;
-      const drawX=w*horizonX-image.naturalWidth*horizonX*scale+sideDrift+w*calibration.offsetX;
-      const drawY=h*horizonY-image.naturalHeight*horizonY*scale+h*calibration.offsetY+h*rise;
+      const drawX=w*horizonX-image.naturalWidth*horizonX*scale+w*calibration.offsetX;
+      const drawY=h*horizonY-image.naturalHeight*horizonY*scale+h*calibration.offsetY;
+      c.save();
+      if(clip){clip();c.clip();}
       c.globalAlpha=alpha;
       c.drawImage(image,drawX,drawY,drawW,drawH);
+      c.restore();
     };
-    // Never show two roads at once. The cinematic cover hides the hard cut.
-    drawLayer(this.streetArts[baseIndex],1,baseIndex,0,0);
+
+    // Stable skyline/base layer. It establishes one unchanging forward axis.
+    drawLayer(this.streetArts[baseIndex],1,baseIndex);
+
+    // Repaint only the street-side scenery in two depth bands. Both enlarge
+    // around the shared vanishing point, while the skyline and road stay fixed.
+    const sideClip=(startRatio,endRatio) => () => {
+      const startY=h*startRatio,endY=h*endRatio;
+      const start=this.roadEdges(startY,baseIndex),end=this.roadEdges(endY,baseIndex);
+      c.beginPath();
+      c.moveTo(0,startY);c.lineTo(start.left,startY);c.lineTo(end.left,endY);c.lineTo(0,endY);c.closePath();
+      c.moveTo(w,startY);c.lineTo(start.right,startY);c.lineTo(end.right,endY);c.lineTo(w,endY);c.closePath();
+    };
+    drawLayer(this.streetArts[baseIndex],.98,baseIndex,1+travel*.022,sideClip(.30,.70));
+    drawLayer(this.streetArts[baseIndex],.98,baseIndex,1+travel*.055,sideClip(.58,1.04));
     c.globalAlpha=1;
 
     const depthShade=c.createLinearGradient(0,0,0,h);
@@ -953,6 +975,10 @@ export class RatRunGame {
     if(item.kind==="actor"){
       const s=item.radius/24,step=Math.sin(item.bob*2);
       c.scale(s*(item.side<0?1:-1),s);
+      if(item.type==="sanitation"){
+        c.fillStyle="rgba(91,255,147,.20)";c.beginPath();c.arc(0,-7,30,0,Math.PI*2);c.fill();
+        c.strokeStyle="#7dffac";c.lineWidth=2;c.beginPath();c.arc(0,-7,27,0,Math.PI*2);c.stroke();
+      }
       c.fillStyle="rgba(0,0,0,.28)";c.beginPath();c.ellipse(0,22,17,5,0,0,Math.PI*2);c.fill();
       if(item.type==="dog"){
         c.fillStyle="#9b724f";c.beginPath();c.ellipse(0,7,18,10,0,0,Math.PI*2);c.fill();
@@ -1071,6 +1097,16 @@ export class RatRunGame {
 
     if(gold){
       c.fillStyle="#fff3a6";c.font=`900 ${Math.max(10,r.radius*.7)}px system-ui`;c.fillText("★",-3,-r.radius*.75);
+    }
+    if(this.effects.cheese>0){
+      c.shadowColor="#8ee8ff";c.shadowBlur=16;
+      c.fillStyle="rgba(86,190,235,.42)";
+      c.beginPath();c.ellipse(0,-r.radius*.04,r.radius*1.34,r.radius*.92,0,0,Math.PI*2);c.fill();
+      c.strokeStyle="rgba(211,249,255,.92)";c.lineWidth=Math.max(1.5,r.radius*.09);
+      c.beginPath();c.ellipse(0,-r.radius*.04,r.radius*1.34,r.radius*.92,0,0,Math.PI*2);c.stroke();
+      c.shadowBlur=0;c.fillStyle="#e7fbff";c.textAlign="center";
+      c.font=`900 ${Math.max(12,r.radius*.78)}px system-ui`;
+      c.fillText("\u2744",0,-r.radius*1.08);
     }
     c.shadowBlur=0;
     c.restore();
